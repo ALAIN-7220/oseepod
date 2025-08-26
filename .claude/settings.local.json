@@ -1,0 +1,6 @@
+{
+	"permissions": {
+		"allow": ["Bash(bun add:*)", "Bash(bun:*)"],
+		"additionalDirectories": ["C:\\c\\Users\\alain\\Desktop\\PROJECTS"]
+	}
+}
