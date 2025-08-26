@@ -27,7 +27,7 @@ import { mockCategories, mockEpisodes, mockPastors } from "@/lib/test-data";
 export default function HomePage() {
 	const [selectedEpisode, setSelectedEpisode] = useState(mockEpisodes[0]);
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [selectedCategory, setSelectedCategory] = useState(null);
+	const [selectedCategory, setSelectedCategory] = useState<{id: number; name: string; slug: string; color: string; description?: string} | null>(null);
 
 	const latestEpisodes = mockEpisodes.slice(0, 6);
 	const trendingEpisodes = mockEpisodes.slice(2, 8);
@@ -106,7 +106,7 @@ export default function HomePage() {
 												Nouveau
 											</Badge>
 											<Badge variant="outline">
-												{featuredEpisodes[0].category}
+												{featuredEpisodes[0].category.name}
 											</Badge>
 										</div>
 
@@ -125,7 +125,7 @@ export default function HomePage() {
 										<div className="flex items-center gap-4 text-muted-foreground text-sm">
 											<span className="flex items-center gap-1">
 												<Clock className="h-4 w-4" />
-												{featuredEpisodes[0].duration}
+												{Math.floor(featuredEpisodes[0].duration / 60)}:{(featuredEpisodes[0].duration % 60).toString().padStart(2, '0')}
 											</span>
 											<span className="flex items-center gap-1">
 												<Calendar className="h-4 w-4" />

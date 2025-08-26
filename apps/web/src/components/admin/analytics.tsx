@@ -5,6 +5,7 @@ import {
 	ArrowUp,
 	BarChart3,
 	Calendar,
+	CheckCircle2,
 	Clock,
 	Download,
 	Download as DownloadIcon,

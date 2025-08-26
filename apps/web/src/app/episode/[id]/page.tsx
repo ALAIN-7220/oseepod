@@ -47,7 +47,7 @@ export default function EpisodeDetailPage() {
 	const params = useParams();
 	const episodeId = params?.id as string;
 
-	const [episode, setEpisode] = useState(null);
+	const [episode, setEpisode] = useState<any>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [isLiked, setIsLiked] = useState(false);
@@ -58,7 +58,7 @@ export default function EpisodeDetailPage() {
 	// Find episode by ID
 	useEffect(() => {
 		const foundEpisode =
-			mockEpisodes.find((ep) => ep.id === episodeId) || mockEpisodes[0];
+			mockEpisodes.find((ep) => ep.id.toString() === episodeId) || mockEpisodes[0];
 		setEpisode({
 			...foundEpisode,
 			transcript:
@@ -123,8 +123,8 @@ export default function EpisodeDetailPage() {
 	const relatedEpisodes = mockEpisodes
 		.filter(
 			(ep) =>
-				ep.id !== episodeId &&
-				(ep.category === episode?.category ||
+				ep.id.toString() !== episodeId &&
+				(ep.category.name === episode?.category?.name ||
 					ep.pastor.id === episode?.pastor.id),
 		)
 		.slice(0, 4);
@@ -235,7 +235,7 @@ export default function EpisodeDetailPage() {
 						<div className="space-y-6 lg:col-span-2">
 							<div className="space-y-4">
 								<div className="flex items-center gap-2">
-									<Badge variant="secondary">{episode.category}</Badge>
+									<Badge variant="secondary">{episode.category.name}</Badge>
 									<Badge variant="outline">Nouveau</Badge>
 								</div>
 
@@ -246,7 +246,7 @@ export default function EpisodeDetailPage() {
 								<div className="flex items-center gap-6 text-muted-foreground">
 									<div className="flex items-center gap-2">
 										<Avatar className="h-8 w-8">
-											<AvatarImage src={episode.pastor.avatar} />
+											<AvatarImage src={episode.pastor.image} />
 											<AvatarFallback>{episode.pastor.name[0]}</AvatarFallback>
 										</Avatar>
 										<Link
@@ -262,7 +262,7 @@ export default function EpisodeDetailPage() {
 									</div>
 									<div className="flex items-center gap-1">
 										<Clock className="h-4 w-4" />
-										{episode.duration}
+										{Math.floor(episode.duration / 60)}:{(episode.duration % 60).toString().padStart(2, '0')}
 									</div>
 								</div>
 
@@ -352,7 +352,7 @@ export default function EpisodeDetailPage() {
 							</CardHeader>
 							<CardContent>
 								<div className="space-y-3">
-									{episode.chapters.map((chapter, index) => (
+									{episode.chapters.map((chapter: any, index: number) => (
 										<div
 											key={index}
 											className="flex cursor-pointer items-center justify-between rounded-lg p-3 transition-colors hover:bg-muted/50"
@@ -496,7 +496,7 @@ export default function EpisodeDetailPage() {
 								<div className="space-y-4">
 									<div className="flex items-center gap-3">
 										<Avatar className="h-12 w-12">
-											<AvatarImage src={episode.pastor.avatar} />
+											<AvatarImage src={episode.pastor.image} />
 											<AvatarFallback>{episode.pastor.name[0]}</AvatarFallback>
 										</Avatar>
 										<div className="flex-1">
@@ -573,7 +573,7 @@ export default function EpisodeDetailPage() {
 												<div className="flex items-center gap-2 text-muted-foreground text-xs">
 													<span>{relatedEpisode.pastor.name}</span>
 													<span>•</span>
-													<span>{relatedEpisode.duration}</span>
+													<span>{Math.floor(relatedEpisode.duration / 60)}:{(relatedEpisode.duration % 60).toString().padStart(2, '0')}</span>
 												</div>
 											</div>
 										</div>

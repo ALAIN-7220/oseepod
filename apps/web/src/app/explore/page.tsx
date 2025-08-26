@@ -50,13 +50,13 @@ type SortOption =
 type ViewMode = "grid" | "list";
 
 export default function ExplorePage() {
-	const [selectedEpisode, setSelectedEpisode] = useState(null);
+	const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
 	// Filters state
 	const [searchQuery, setSearchQuery] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string>("all");
+	const [selectedCategory, setSelectedCategory] = useState<{id: number; name: string; slug: string; color: string; description?: string} | null>(null);
 	const [selectedPastor, setSelectedPastor] = useState<string>("all");
 	const [sortBy, setSortBy] = useState<SortOption>("latest");
 	const [durationRange, setDurationRange] = useState([0, 120]); // in minutes
@@ -68,12 +68,12 @@ export default function ExplorePage() {
 	// Mock data for filters
 	const allEpisodes = [
 		...mockEpisodes,
-		...mockEpisodes.map((ep) => ({
+		...mockEpisodes.map((ep, index) => ({
 			...ep,
-			id: `${ep.id}-copy`,
+			id: ep.id + 1000 + index,
 			publishedAt: new Date(
 				Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000,
-			).toISOString(),
+			),
 			playCount: Math.floor(Math.random() * 5000) + 100,
 			rating: Math.round((Math.random() * 2 + 3) * 10) / 10, // 3.0 to 5.0
 		})),
@@ -90,16 +90,14 @@ export default function ExplorePage() {
 
 			// Category filter
 			const matchesCategory =
-				selectedCategory === "all" || episode.category === selectedCategory;
+				selectedCategory === null || episode.category.name === selectedCategory?.name;
 
 			// Pastor filter
 			const matchesPastor =
 				selectedPastor === "all" || episode.pastor.name === selectedPastor;
 
 			// Duration filter (convert episode duration to minutes)
-			const episodeDurationMinutes =
-				Number.parseInt(episode.duration.split(":")[0]) * 60 +
-				Number.parseInt(episode.duration.split(":")[1]);
+			const episodeDurationMinutes = Math.floor(episode.duration / 60);
 			const matchesDuration =
 				episodeDurationMinutes >= durationRange[0] &&
 				episodeDurationMinutes <= durationRange[1];
@@ -147,24 +145,10 @@ export default function ExplorePage() {
 						b.likeCount * 0.3 -
 						(a.playCount * 0.7 + a.likeCount * 0.3)
 					);
-				case "duration-short": {
-					const aDuration =
-						Number.parseInt(a.duration.split(":")[0]) * 60 +
-						Number.parseInt(a.duration.split(":")[1]);
-					const bDuration =
-						Number.parseInt(b.duration.split(":")[0]) * 60 +
-						Number.parseInt(b.duration.split(":")[1]);
-					return aDuration - bDuration;
-				}
-				case "duration-long": {
-					const aDurationLong =
-						Number.parseInt(a.duration.split(":")[0]) * 60 +
-						Number.parseInt(a.duration.split(":")[1]);
-					const bDurationLong =
-						Number.parseInt(b.duration.split(":")[0]) * 60 +
-						Number.parseInt(b.duration.split(":")[1]);
-					return bDurationLong - aDurationLong;
-				}
+				case "duration-short":
+					return a.duration - b.duration;
+				case "duration-long":
+					return b.duration - a.duration;
 				case "rating":
 					return (b.rating || 4.0) - (a.rating || 4.0);
 				default:
@@ -192,7 +176,7 @@ export default function ExplorePage() {
 
 	const clearFilters = () => {
 		setSearchQuery("");
-		setSelectedCategory("all");
+		setSelectedCategory(null);
 		setSelectedPastor("all");
 		setSortBy("latest");
 		setDurationRange([0, 120]);
@@ -202,7 +186,7 @@ export default function ExplorePage() {
 	};
 
 	const activeFiltersCount = [
-		selectedCategory !== "all",
+		selectedCategory !== null,
 		selectedPastor !== "all",
 		durationRange[0] > 0 || durationRange[1] < 120,
 		onlyDownloaded,
@@ -252,12 +236,8 @@ export default function ExplorePage() {
 						<h2 className="font-semibold text-lg">Parcourir par Catégorie</h2>
 						<CategoryFilter
 							categories={mockCategories}
-							selectedCategory={
-								selectedCategory === "all" ? null : selectedCategory
-							}
-							onCategorySelect={(category) =>
-								setSelectedCategory(category || "all")
-							}
+							selectedCategory={selectedCategory}
+							onCategorySelect={setSelectedCategory}
 						/>
 					</div>
 

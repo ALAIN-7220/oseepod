@@ -45,8 +45,8 @@ export default function PastorProfilePage() {
 	const params = useParams();
 	const pastorId = params?.id as string;
 
-	const [pastor, setPastor] = useState(null);
-	const [selectedEpisode, setSelectedEpisode] = useState(null);
+	const [pastor, setPastor] = useState<any>(null);
+	const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isFollowing, setIsFollowing] = useState(false);
 	const [activeTab, setActiveTab] = useState("episodes");
@@ -54,7 +54,7 @@ export default function PastorProfilePage() {
 	// Find pastor by ID
 	useEffect(() => {
 		const foundPastor =
-			mockPastors.find((p) => p.id === pastorId) || mockPastors[0];
+			mockPastors.find((p) => p.id.toString() === pastorId) || mockPastors[0];
 		setPastor({
 			...foundPastor,
 			// Extended pastor data
@@ -115,7 +115,7 @@ export default function PastorProfilePage() {
 		});
 	}, [pastorId]);
 
-	const pastorEpisodes = mockEpisodes.filter((ep) => ep.pastor.id === pastorId);
+	const pastorEpisodes = mockEpisodes.filter((ep) => ep.pastor.id.toString() === pastorId);
 	const popularEpisodes = pastorEpisodes
 		.sort((a, b) => b.playCount - a.playCount)
 		.slice(0, 6);
@@ -186,7 +186,7 @@ export default function PastorProfilePage() {
 						<div className="flex-shrink-0">
 							<div className="relative">
 								<Avatar className="h-32 w-32 border-4 border-white shadow-lg">
-									<AvatarImage src={pastor.avatar} className="object-cover" />
+									<AvatarImage src={pastor.image} className="object-cover" />
 									<AvatarFallback className="text-2xl">
 										{pastor.name[0]}
 									</AvatarFallback>
@@ -401,7 +401,7 @@ export default function PastorProfilePage() {
 									</CardHeader>
 									<CardContent>
 										<div className="space-y-4">
-											{pastor.achievements.map((achievement, index) => (
+											{pastor.achievements.map((achievement: any, index: any) => (
 												<div
 													key={index}
 													className="flex items-start gap-3 rounded-lg border p-3"
@@ -506,7 +506,7 @@ export default function PastorProfilePage() {
 									</CardHeader>
 									<CardContent>
 										<div className="space-y-4">
-											{pastor.schedule.map((event, index) => (
+											{pastor.schedule.map((event: any, index: any) => (
 												<div
 													key={index}
 													className="flex items-center justify-between rounded-lg border p-4"
@@ -639,7 +639,7 @@ export default function PastorProfilePage() {
 							</CardHeader>
 							<CardContent className="space-y-4">
 								{mockPastors
-									.filter((p) => p.id !== pastorId)
+									.filter((p) => p.id.toString() !== pastorId)
 									.slice(0, 3)
 									.map((similarPastor) => (
 										<Link
@@ -648,7 +648,7 @@ export default function PastorProfilePage() {
 										>
 											<div className="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50">
 												<Avatar className="h-10 w-10">
-													<AvatarImage src={similarPastor.avatar} />
+													<AvatarImage src={similarPastor.image} />
 													<AvatarFallback>
 														{similarPastor.name[0]}
 													</AvatarFallback>

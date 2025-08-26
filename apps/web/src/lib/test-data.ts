@@ -28,7 +28,7 @@ export const sampleAudioFiles = [
 
 export const mockEpisodes = [
 	{
-		id: "1",
+		id: 1,
 		title: "La Grâce Divine",
 		slug: "la-grace-divine",
 		description:
@@ -36,16 +36,20 @@ export const mockEpisodes = [
 		audioUrl: sampleAudioFiles[0].url,
 		videoUrl: null,
 		thumbnailUrl: "https://picsum.photos/400/225?random=1",
-		duration: "60:00",
+		duration: 3600,
 		biblicalReference: "Éphésiens 2:8-9",
-		publishedAt: "2024-01-15T10:30:00Z",
+		publishedAt: new Date("2024-01-15T10:30:00Z"),
 		playCount: 1250,
 		likeCount: 89,
-		category: "Enseignement",
+		category: {
+			id: 1,
+			name: "Enseignement",
+			color: "#3B82F6"
+		},
 		pastor: {
-			id: "1",
+			id: 1,
 			name: "Pasteur Jean-Baptiste Martin",
-			avatar: "https://picsum.photos/100/100?random=10",
+			image: "https://picsum.photos/100/100?random=10",
 			bio: "Pasteur depuis 15 ans, Jean-Baptiste est passionné par l'enseignement biblique.",
 			title: "Pasteur Principal",
 			church: "Église Évangélique de Paris",
@@ -56,7 +60,7 @@ export const mockEpisodes = [
 		rating: 4.8,
 	},
 	{
-		id: "2",
+		id: 2,
 		title: "L'Amour Inconditionnel",
 		slug: "l-amour-inconditionnel",
 		description:
@@ -64,16 +68,20 @@ export const mockEpisodes = [
 		audioUrl: sampleAudioFiles[1].url,
 		videoUrl: null,
 		thumbnailUrl: "https://picsum.photos/400/225?random=2",
-		duration: "35:00",
+		duration: 2100,
 		biblicalReference: "1 Jean 4:7-21",
-		publishedAt: "2024-01-08T14:20:00Z",
+		publishedAt: new Date("2024-01-08T14:20:00Z"),
 		playCount: 980,
 		likeCount: 72,
-		category: "Vie Chrétienne",
+		category: {
+			id: 2,
+			name: "Vie Chrétienne",
+			color: "#10B981"
+		},
 		pastor: {
-			id: "2",
+			id: 2,
 			name: "Pasteure Marie Dubois",
-			avatar: "https://picsum.photos/100/100?random=11",
+			image: "https://picsum.photos/100/100?random=11",
 			bio: "Marie se consacre particulièrement au ministère auprès des familles.",
 			title: "Pasteure Associée",
 			church: "Assemblée Chrétienne de Lyon",
@@ -84,7 +92,7 @@ export const mockEpisodes = [
 		rating: 4.7,
 	},
 	{
-		id: "3",
+		id: 3,
 		title: "La Paix au Cœur de la Tempête",
 		slug: "la-paix-au-coeur-de-la-tempete",
 		description:
@@ -92,16 +100,20 @@ export const mockEpisodes = [
 		audioUrl: sampleAudioFiles[2].url,
 		videoUrl: null,
 		thumbnailUrl: "https://picsum.photos/400/225?random=3",
-		duration: "47:30",
+		duration: 2850,
 		biblicalReference: "Philippiens 4:6-7",
-		publishedAt: "2024-01-01T09:15:00Z",
+		publishedAt: new Date("2024-01-01T09:15:00Z"),
 		playCount: 1450,
 		likeCount: 103,
-		category: "Encouragement",
+		category: {
+			id: 3,
+			name: "Encouragement",
+			color: "#F59E0B"
+		},
 		pastor: {
-			id: "1",
+			id: 1,
 			name: "Pasteur Jean-Baptiste Martin",
-			avatar: "https://picsum.photos/100/100?random=10",
+			image: "https://picsum.photos/100/100?random=10",
 			bio: "Pasteur depuis 15 ans, Jean-Baptiste est passionné par l'enseignement biblique.",
 			title: "Pasteur Principal",
 			church: "Église Évangélique de Paris",
@@ -112,7 +124,7 @@ export const mockEpisodes = [
 		rating: 4.9,
 	},
 	{
-		id: "4",
+		id: 4,
 		title: "Marcher par la Foi",
 		slug: "marcher-par-la-foi",
 		description:
@@ -120,16 +132,20 @@ export const mockEpisodes = [
 		audioUrl: sampleAudioFiles[3].url,
 		videoUrl: null,
 		thumbnailUrl: "https://picsum.photos/400/225?random=4",
-		duration: "40:00",
+		duration: 2400,
 		biblicalReference: "2 Corinthiens 5:7",
-		publishedAt: "2023-12-25T11:00:00Z",
+		publishedAt: new Date("2023-12-25T11:00:00Z"),
 		playCount: 876,
 		likeCount: 64,
-		category: "Enseignement",
+		category: {
+			id: 1,
+			name: "Enseignement",
+			color: "#3B82F6"
+		},
 		pastor: {
-			id: "3",
+			id: 3,
 			name: "Pasteur David Lévy",
-			avatar: "https://picsum.photos/100/100?random=12",
+			image: "https://picsum.photos/100/100?random=12",
 			bio: "Ancien missionnaire avec une perspective internationale.",
 			title: "Pasteur Missionnaire",
 			church: "Église Baptiste de Marseille",
@@ -140,7 +156,7 @@ export const mockEpisodes = [
 		rating: 4.6,
 	},
 	{
-		id: "5",
+		id: 5,
 		title: "Le Pardon Libérateur",
 		slug: "le-pardon-liberateur",
 		description:
@@ -148,16 +164,20 @@ export const mockEpisodes = [
 		audioUrl: sampleAudioFiles[4].url,
 		videoUrl: null,
 		thumbnailUrl: "https://picsum.photos/400/225?random=5",
-		duration: "53:20",
+		duration: 3200,
 		biblicalReference: "Matthieu 6:14-15",
-		publishedAt: "2023-12-18T16:45:00Z",
+		publishedAt: new Date("2023-12-18T16:45:00Z"),
 		playCount: 1100,
 		likeCount: 85,
-		category: "Vie Chrétienne",
+		category: {
+			id: 2,
+			name: "Vie Chrétienne",
+			color: "#10B981"
+		},
 		pastor: {
-			id: "2",
+			id: 2,
 			name: "Pasteure Marie Dubois",
-			avatar: "https://picsum.photos/100/100?random=11",
+			image: "https://picsum.photos/100/100?random=11",
 			bio: "Marie se consacre particulièrement au ministère auprès des familles.",
 			title: "Pasteure Associée",
 			church: "Assemblée Chrétienne de Lyon",
@@ -170,21 +190,57 @@ export const mockEpisodes = [
 ];
 
 export const mockCategories = [
-	"Enseignement",
-	"Vie Chrétienne",
-	"Encouragement",
-	"Prière",
-	"Louange",
-	"Témoignage",
+	{
+		id: 1,
+		name: "Enseignement",
+		slug: "enseignement",
+		color: "#3B82F6",
+		description: "Messages d'enseignement biblique"
+	},
+	{
+		id: 2,
+		name: "Vie Chrétienne",
+		slug: "vie-chretienne",
+		color: "#10B981",
+		description: "Conseils pour la vie quotidienne"
+	},
+	{
+		id: 3,
+		name: "Encouragement",
+		slug: "encouragement",
+		color: "#F59E0B",
+		description: "Messages d'encouragement et d'espoir"
+	},
+	{
+		id: 4,
+		name: "Prière",
+		slug: "priere",
+		color: "#8B5CF6",
+		description: "Enseignements sur la prière"
+	},
+	{
+		id: 5,
+		name: "Louange",
+		slug: "louange",
+		color: "#EF4444",
+		description: "Moments de louange et d'adoration"
+	},
+	{
+		id: 6,
+		name: "Témoignage",
+		slug: "temoignage",
+		color: "#06B6D4",
+		description: "Témoignages personnels et expériences"
+	},
 ];
 
 export const mockPastors = [
 	{
-		id: "1",
+		id: 1,
 		name: "Pasteur Jean-Baptiste Martin",
 		slug: "jean-baptiste-martin",
 		bio: "Pasteur depuis 15 ans, Jean-Baptiste est passionné par l'enseignement biblique et l'accompagnement spirituel.",
-		avatar: "https://picsum.photos/100/100?random=10",
+		image: "https://picsum.photos/100/100?random=10",
 		title: "Pasteur Principal",
 		church: "Église Évangélique de Paris",
 		website: "https://example.com",
@@ -192,11 +248,11 @@ export const mockPastors = [
 		rating: 4.8,
 	},
 	{
-		id: "2",
+		id: 2,
 		name: "Pasteure Marie Dubois",
 		slug: "marie-dubois",
 		bio: "Marie se consacre particulièrement au ministère auprès des familles et des jeunes.",
-		avatar: "https://picsum.photos/100/100?random=11",
+		image: "https://picsum.photos/100/100?random=11",
 		title: "Pasteure Associée",
 		church: "Assemblée Chrétienne de Lyon",
 		website: "https://example.com",
@@ -204,11 +260,11 @@ export const mockPastors = [
 		rating: 4.7,
 	},
 	{
-		id: "3",
+		id: 3,
 		name: "Pasteur David Lévy",
 		slug: "david-levy",
 		bio: "Ancien missionnaire, David apporte une perspective internationale à ses enseignements.",
-		avatar: "https://picsum.photos/100/100?random=12",
+		image: "https://picsum.photos/100/100?random=12",
 		title: "Pasteur Missionnaire",
 		church: "Église Baptiste de Marseille",
 		website: "https://example.com",
@@ -259,10 +315,22 @@ export const formatDuration = (seconds: number): string => {
 	return `${minutes}:${secs.toString().padStart(2, "0")}`;
 };
 
-export const formatDate = (date: Date): string => {
-	return new Intl.DateTimeFormat("fr-FR", {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	}).format(date);
+export const formatDate = (date: Date | string): string => {
+	try {
+		const dateObj = typeof date === 'string' ? new Date(date) : date;
+		
+		// Vérifier si la date est valide
+		if (isNaN(dateObj.getTime())) {
+			return 'Date invalide';
+		}
+		
+		return new Intl.DateTimeFormat("fr-FR", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+		}).format(dateObj);
+	} catch (error) {
+		console.error('Erreur lors du formatage de la date:', error, 'Date reçue:', date);
+		return 'Date invalide';
+	}
 };

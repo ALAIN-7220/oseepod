@@ -37,7 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockEpisodes } from "@/lib/test-data";
 
 export default function LibraryPage() {
-	const [selectedEpisode, setSelectedEpisode] = useState(null);
+	const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [activeTab, setActiveTab] = useState("favorites");
