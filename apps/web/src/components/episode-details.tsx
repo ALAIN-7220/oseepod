@@ -171,25 +171,27 @@ export function EpisodeDetails({ episode, onPlay }: EpisodeDetailsProps) {
 			<Separator />
 
 			{/* Pastor Info */}
-			<Card>
-				<CardContent className="p-6">
-					<div className="flex items-center gap-4">
-						<img
-							src={episode.pastor.image}
-							alt={episode.pastor.name}
-							className="h-16 w-16 rounded-full object-cover"
-						/>
-						<div className="flex-1">
-							<h3 className="font-semibold text-lg">{episode.pastor.name}</h3>
-							<p className="text-muted-foreground">Pasteur</p>
+			{episode.pastor && (
+				<Card>
+					<CardContent className="p-6">
+						<div className="flex items-center gap-4">
+							<img
+								src={episode.pastor.image}
+								alt={episode.pastor.name}
+								className="h-16 w-16 rounded-full object-cover"
+							/>
+							<div className="flex-1">
+								<h3 className="font-semibold text-lg">{episode.pastor.name}</h3>
+								<p className="text-muted-foreground">Pasteur</p>
+							</div>
+							<Button variant="outline">
+								<User className="mr-2 h-4 w-4" />
+								Voir le profil
+							</Button>
 						</div>
-						<Button variant="outline">
-							<User className="mr-2 h-4 w-4" />
-							Voir le profil
-						</Button>
-					</div>
-				</CardContent>
-			</Card>
+					</CardContent>
+				</Card>
+			)}
 		</div>
 	);
 }

@@ -66,7 +66,7 @@ export function Recommendations({
 			.filter(
 				(episode) =>
 					userPreferences.favoriteCategories.includes(episode.category.name) ||
-					userPreferences.favoritePastors.includes(episode.pastor.name),
+					(episode.pastor && userPreferences.favoritePastors.includes(episode.pastor.name)),
 			)
 			.slice(0, 4);
 	};
@@ -98,7 +98,7 @@ export function Recommendations({
 				(ep) =>
 					ep.id !== lastEpisode.id &&
 					(ep.category.id === lastEpisode.category.id ||
-						ep.pastor.id === lastEpisode.pastor.id),
+						(ep.pastor && lastEpisode.pastor && ep.pastor.id === lastEpisode.pastor.id)),
 			)
 			.slice(0, 4);
 	};

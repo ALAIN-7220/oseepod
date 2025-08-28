@@ -118,12 +118,12 @@ export function FavoritesList({
 
 								<div className="mb-2 flex items-center gap-2">
 									<img
-										src={item.episode.pastor.image}
-										alt={item.episode.pastor.name}
+										src={item.episode.pastor?.image || "/placeholder-avatar.jpg"}
+										alt={item.episode.pastor?.name || "Aucun pasteur"}
 										className="h-4 w-4 rounded-full object-cover"
 									/>
 									<p className="text-muted-foreground text-xs">
-										{item.episode.pastor.name}
+										{item.episode.pastor?.name || "Aucun pasteur"}
 									</p>
 								</div>
 

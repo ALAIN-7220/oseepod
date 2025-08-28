@@ -35,6 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockEpisodes } from "@/lib/test-data";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export default function LibraryPage() {
 	const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
@@ -87,7 +88,7 @@ export default function LibraryPage() {
 		return episodes.filter(
 			(episode) =>
 				episode.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				episode.pastor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				(episode.pastor?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
 				episode.description.toLowerCase().includes(searchQuery.toLowerCase()),
 		);
 	};
@@ -100,6 +101,7 @@ export default function LibraryPage() {
 	};
 
 	return (
+		<ProtectedRoute requireAuth>
 		<div className="min-h-screen bg-background pb-24">
 			{/* Header */}
 			<div className="border-b bg-gradient-to-br from-primary/10 via-primary/5 to-background">
@@ -488,5 +490,6 @@ export default function LibraryPage() {
 				/>
 			)}
 		</div>
+		</ProtectedRoute>
 	);
 }

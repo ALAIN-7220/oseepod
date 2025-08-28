@@ -15,11 +15,25 @@ export const auth = betterAuth({
 		enabled: true,
 		requireEmailVerification: false,
 	},
+	user: {
+		additionalFields: {
+			role: {
+				type: "string",
+				defaultValue: "user",
+			}
+		}
+	},
+	session: {
+		includeAdditionalFields: {
+			role: true
+		}
+	},
 	advanced: {
 		defaultCookieAttributes: {
 			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 			secure: process.env.NODE_ENV === "production",
 			httpOnly: true,
+			domain: process.env.NODE_ENV === "production" ? undefined : "localhost",
 		},
 	},
 });

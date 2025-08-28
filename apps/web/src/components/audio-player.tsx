@@ -120,7 +120,7 @@ export function AudioPlayer({
 					<div className="min-w-0 flex-1">
 						<h3 className="truncate font-semibold text-lg">{episode.title}</h3>
 						<p className="text-muted-foreground text-sm">
-							{episode.pastor.name}
+							{episode.pastor?.name || "Aucun pasteur"}
 						</p>
 					</div>
 				</div>

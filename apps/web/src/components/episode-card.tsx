@@ -124,7 +124,7 @@ export function EpisodeCard({
 								{episode.title}
 							</h3>
 							<p className="line-clamp-1 text-muted-foreground text-sm">
-								{episode.pastor.name}
+								{episode.pastor?.name || "Aucun pasteur"}
 							</p>
 							<div className="flex items-center gap-3 text-muted-foreground text-xs">
 								<div className="flex items-center gap-1">
@@ -216,7 +216,7 @@ export function EpisodeCard({
 								{episode.title}
 							</h3>
 							<p className="mb-1 text-muted-foreground text-xs">
-								{episode.pastor.name}
+								{episode.pastor?.name || "Aucun pasteur"}
 							</p>
 							<div className="flex items-center gap-2 text-muted-foreground text-xs">
 								<span>{formatDuration(episode.duration)}</span>
@@ -327,15 +327,29 @@ export function EpisodeCard({
 
 					{/* Pastor Info */}
 					<div className="flex items-center gap-2">
-						<img
-							src={episode.pastor.image}
-							alt={episode.pastor.name}
-							className="h-6 w-6 rounded-full border border-border object-cover"
-						/>
-						<span className="truncate font-medium text-sm">
-							{episode.pastor.name}
-						</span>
-						<div className="h-1 w-1 rounded-full bg-muted-foreground" />
+						{episode.pastor ? (
+							<>
+								<img
+									src={episode.pastor.image}
+									alt={episode.pastor.name}
+									className="h-6 w-6 rounded-full border border-border object-cover"
+								/>
+								<span className="truncate font-medium text-sm">
+									{episode.pastor?.name || "Aucun pasteur"}
+								</span>
+								<div className="h-1 w-1 rounded-full bg-muted-foreground" />
+							</>
+						) : (
+							<>
+								<div className="h-6 w-6 rounded-full border border-border bg-muted flex items-center justify-center">
+									<span className="text-xs font-medium text-muted-foreground">?</span>
+								</div>
+								<span className="truncate font-medium text-sm text-muted-foreground">
+									Aucun pasteur
+								</span>
+								<div className="h-1 w-1 rounded-full bg-muted-foreground" />
+							</>
+						)}
 						<span className="text-muted-foreground text-xs">
 							{formatDate(episode.publishedAt)}
 						</span>

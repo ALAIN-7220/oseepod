@@ -17,6 +17,7 @@ import {
 	X,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/lib/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,15 +59,33 @@ const mockUser = {
 	},
 };
 
-export function UserProfile({ user = mockUser }: UserProfileProps) {
+export function UserProfile({ user }: UserProfileProps) {
+	const { user: authUser } = useAuth();
 	const [isEditing, setIsEditing] = useState(false);
+	
+	// Use authenticated user data or fallback to provided user or mock
+	const currentUser = user || (authUser ? {
+		id: authUser.id,
+		name: authUser.name,
+		email: authUser.email,
+		phone: "",
+		location: "",
+		bio: "",
+		image: "https://picsum.photos/150/150?random=" + authUser.id,
+		joinedAt: new Date(authUser.createdAt || new Date()),
+		preferences: {
+			notifications: true,
+			autoDownload: false,
+			dataUsage: "wifi" as const,
+		},
+	} : mockUser);
 	const [formData, setFormData] = useState({
-		name: user.name,
-		phone: user.phone || "",
-		location: user.location || "",
-		bio: user.bio || "",
+		name: currentUser.name,
+		phone: currentUser.phone || "",
+		location: currentUser.location || "",
+		bio: currentUser.bio || "",
 	});
-	const [preferences, setPreferences] = useState(user.preferences);
+	const [preferences, setPreferences] = useState(currentUser.preferences);
 
 	const handleSave = () => {
 		// Save logic here
@@ -76,10 +95,10 @@ export function UserProfile({ user = mockUser }: UserProfileProps) {
 
 	const handleCancel = () => {
 		setFormData({
-			name: user.name,
-			phone: user.phone || "",
-			location: user.location || "",
-			bio: user.bio || "",
+			name: currentUser.name,
+			phone: currentUser.phone || "",
+			location: currentUser.location || "",
+			bio: currentUser.bio || "",
 		});
 		setIsEditing(false);
 	};
@@ -107,8 +126,8 @@ export function UserProfile({ user = mockUser }: UserProfileProps) {
 						<div className="relative mx-auto flex-shrink-0 lg:mx-0">
 							<div className="h-32 w-32 overflow-hidden rounded-full border-4 border-background bg-background shadow-xl">
 								<img
-									src={user.image}
-									alt={user.name}
+									src={currentUser.image}
+									alt={currentUser.name}
 									className="h-full w-full object-cover"
 								/>
 							</div>
@@ -126,10 +145,10 @@ export function UserProfile({ user = mockUser }: UserProfileProps) {
 								<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 									<div className="space-y-1">
 										<h1 className="font-bold text-3xl tracking-tight">
-											{user.name}
+											{currentUser.name}
 										</h1>
 										<p className="text-lg text-muted-foreground">
-											{user.email}
+											{currentUser.email}
 										</p>
 									</div>
 
@@ -159,14 +178,14 @@ export function UserProfile({ user = mockUser }: UserProfileProps) {
 								{/* Member since */}
 								<div className="flex items-center justify-center gap-2 text-muted-foreground lg:justify-start">
 									<Calendar className="h-4 w-4" />
-									<span>Membre depuis le {formatJoinDate(user.joinedAt)}</span>
+									<span>Membre depuis le {formatJoinDate(currentUser.joinedAt)}</span>
 								</div>
 							</div>
 
 							{/* Bio */}
-							{user.bio && !isEditing && (
+							{currentUser.bio && !isEditing && (
 								<div className="rounded-lg bg-muted/50 p-4">
-									<p className="text-sm italic leading-relaxed">"{user.bio}"</p>
+									<p className="text-sm italic leading-relaxed">"{currentUser.bio}"</p>
 								</div>
 							)}
 
@@ -299,31 +318,31 @@ export function UserProfile({ user = mockUser }: UserProfileProps) {
 												<div className="font-medium text-muted-foreground text-xs">
 													Email
 												</div>
-												<div className="font-medium">{user.email}</div>
+												<div className="font-medium">{currentUser.email}</div>
 											</div>
 										</div>
 
-										{user.phone && (
+										{currentUser.phone && (
 											<div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
 												<Phone className="h-5 w-5 flex-shrink-0 text-primary" />
 												<div>
 													<div className="font-medium text-muted-foreground text-xs">
 														Téléphone
 													</div>
-													<div className="font-medium">{user.phone}</div>
+													<div className="font-medium">{currentUser.phone}</div>
 												</div>
 											</div>
 										)}
 									</div>
 
-									{user.location && (
+									{currentUser.location && (
 										<div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
 											<MapPin className="h-5 w-5 flex-shrink-0 text-primary" />
 											<div>
 												<div className="font-medium text-muted-foreground text-xs">
 													Localisation
 												</div>
-												<div className="font-medium">{user.location}</div>
+												<div className="font-medium">{currentUser.location}</div>
 											</div>
 										</div>
 									)}

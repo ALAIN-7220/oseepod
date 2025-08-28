@@ -212,7 +212,7 @@ export function PlaylistQueue({
 												{episode.title}
 											</h4>
 											<p className="truncate text-muted-foreground text-xs">
-												{episode.pastor.name} •{" "}
+												{episode.pastor?.name || "Aucun pasteur"} •{" "}
 												{formatDuration(episode.duration)}
 											</p>
 										</div>

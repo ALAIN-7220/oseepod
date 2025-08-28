@@ -98,7 +98,7 @@ export function ListeningHistory({
 										{item.episode.title}
 									</h4>
 									<p className="mb-2 text-muted-foreground text-xs">
-										{item.episode.pastor.name}
+										{item.episode.pastor?.name || "Aucun pasteur"}
 									</p>
 
 									{/* Progress */}

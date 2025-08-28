@@ -17,7 +17,7 @@ export interface Episode {
 		id: number;
 		name: string;
 		image?: string;
-	};
+	} | null;
 	category: {
 		id: number;
 		name: string;

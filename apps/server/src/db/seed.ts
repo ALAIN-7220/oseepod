@@ -1,5 +1,9 @@
 import { db } from "./index";
 import * as schema from "./schema/podcast";
+import * as authSchema from "./schema/auth";
+import { auth } from "../lib/auth";
+import { randomBytes } from "crypto";
+import { eq } from "drizzle-orm";
 
 const categories = [
 	{
@@ -307,6 +311,66 @@ export async function seedDatabase() {
 		await db.delete(schema.pastors);
 		await db.delete(schema.categories);
 
+		// Create admin user if not exists
+		console.log("👤 Creating admin user...");
+		const adminEmail = "admin@oseepod.com";
+		const adminPassword = "admin123";
+		
+		// Check if admin already exists
+		const existingAdmin = await db.select().from(authSchema.user).where(eq(authSchema.user.email, adminEmail)).limit(1);
+		
+		let adminUser;
+		if (existingAdmin.length === 0) {
+			console.log("🔐 Creating new admin account...");
+			// Use Better Auth to create admin account
+			try {
+				const response = await auth.api.signUpEmail({
+					body: {
+						email: adminEmail,
+						password: adminPassword,
+						name: "Administrateur"
+					}
+				});
+				
+				if (response) {
+					// Update user role to admin
+					await db.update(authSchema.user)
+						.set({ role: "admin" })
+						.where(eq(authSchema.user.email, adminEmail));
+					
+					console.log("✅ Admin user created successfully!");
+					console.log("📧 Email: admin@oseepod.com");
+					console.log("🔑 Password: admin123");
+				}
+			} catch (error) {
+				console.warn("⚠️ Could not create admin via auth API, will create manually...");
+				
+				// Fallback: create user manually
+				const [newAdmin] = await db.insert(authSchema.user).values({
+					id: randomBytes(16).toString('hex'),
+					name: "Administrateur",
+					email: adminEmail,
+					emailVerified: true,
+					role: "admin",
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}).returning();
+				
+				adminUser = newAdmin;
+				console.log("✅ Admin user created manually!");
+				console.log("📧 Email: admin@oseepod.com");
+				console.log("🔑 You'll need to sign up via the UI with this email");
+			}
+		} else {
+			// Update existing user to admin
+			await db.update(authSchema.user)
+				.set({ role: "admin" })
+				.where(eq(authSchema.user.email, adminEmail));
+			
+			adminUser = existingAdmin[0];
+			console.log("✅ Existing admin user found and updated!");
+		}
+
 		// Insert categories
 		console.log("📁 Inserting categories...");
 		const insertedCategories = await db
@@ -323,11 +387,17 @@ export async function seedDatabase() {
 			.returning({ id: schema.pastors.id, name: schema.pastors.name });
 		console.log(`✅ Inserted ${insertedPastors.length} pastors`);
 
-		// Insert episodes
+		// Insert episodes with correct pastor IDs
 		console.log("🎧 Inserting episodes...");
+		const episodesWithCorrectIds = episodes.map((episode, index) => ({
+			...episode,
+			pastorId: insertedPastors[((episode.pastorId ?? 1) - 1) % insertedPastors.length].id,
+			categoryId: insertedCategories[((episode.categoryId ?? 1) - 1) % insertedCategories.length].id,
+		}));
+		
 		const insertedEpisodes = await db
 			.insert(schema.episodes)
-			.values(episodes)
+			.values(episodesWithCorrectIds)
 			.returning({ id: schema.episodes.id, title: schema.episodes.title });
 		console.log(`✅ Inserted ${insertedEpisodes.length} episodes`);
 
@@ -363,6 +433,7 @@ export async function seedDatabase() {
 		console.log("🎉 Database seeding completed successfully!");
 
 		return {
+			adminCreated: true,
 			categories: insertedCategories.length,
 			pastors: insertedPastors.length,
 			episodes: insertedEpisodes.length,

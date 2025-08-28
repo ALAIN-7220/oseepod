@@ -85,7 +85,7 @@ export default function ExplorePage() {
 				searchQuery === "" ||
 				episode.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				episode.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				episode.pastor.name.toLowerCase().includes(searchQuery.toLowerCase());
+				(episode.pastor?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
 
 			// Category filter
 			const matchesCategory =
@@ -93,7 +93,7 @@ export default function ExplorePage() {
 
 			// Pastor filter
 			const matchesPastor =
-				selectedPastor === "all" || episode.pastor.name === selectedPastor;
+				selectedPastor === "all" || episode.pastor?.name === selectedPastor;
 
 			// Duration filter (convert episode duration to minutes)
 			const episodeDurationMinutes = Math.floor(episode.duration / 60);

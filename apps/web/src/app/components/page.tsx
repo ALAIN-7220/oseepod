@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ActivityFeed } from "@/components/activity-feed";
 // Admin Components
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
@@ -111,7 +112,7 @@ export default function ComponentsPage() {
 	};
 
 	return (
-		<>
+		<ProtectedRoute requireAdmin>
 			<div className="container mx-auto space-y-6 py-6 pb-24">
 				<div className="mb-8 text-center">
 					<h1 className="mb-2 font-bold text-4xl">OseePod Components</h1>
@@ -704,7 +705,6 @@ export default function ComponentsPage() {
 					</TabsContent>
 				</Tabs>
 			</div>
-
-		</>
+		</ProtectedRoute>
 	);
 }

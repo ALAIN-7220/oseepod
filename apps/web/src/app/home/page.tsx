@@ -30,10 +30,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/utils/trpc";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/useAuth";
 
 export default function HomePage() {
 	const router = useRouter();
 	const { playEpisode, currentEpisode, isPlaying } = useAudio();
+	const { isAdmin } = useAuth();
 	const [selectedCategory, setSelectedCategory] = useState<any>(null);
 	const [favorites, setFavorites] = useState<number[]>([]);
 	const [downloads, setDownloads] = useState<number[]>([]);
@@ -196,12 +198,14 @@ export default function HomePage() {
 							Pour ajouter des épisodes :
 						</p>
 						<div className="flex flex-col gap-2">
-							<Button 
-								onClick={() => router.push('/upload')}
-								className="gap-2"
-							>
-								📤 Uploader un épisode
-							</Button>
+							{isAdmin && (
+								<Button 
+									onClick={() => router.push('/upload')}
+									className="gap-2"
+								>
+									📤 Uploader un épisode
+								</Button>
+							)}
 							<Button 
 								variant="outline"
 								onClick={() => window.location.reload()}
@@ -515,18 +519,20 @@ export default function HomePage() {
 									</div>
 								</Button>
 								
-								<Button 
-									variant="outline" 
-									size="lg"
-									onClick={() => router.push('/upload')}
-									className="gap-2 h-auto flex-col py-6"
-								>
-									<Grid3X3 className="h-8 w-8 text-blue-500" />
-									<div>
-										<div className="font-semibold">Upload Audio</div>
-										<div className="text-xs text-muted-foreground">Nouveau projet</div>
-									</div>
-								</Button>
+								{isAdmin && (
+									<Button 
+										variant="outline" 
+										size="lg"
+										onClick={() => router.push('/upload')}
+										className="gap-2 h-auto flex-col py-6"
+									>
+										<Grid3X3 className="h-8 w-8 text-blue-500" />
+										<div>
+											<div className="font-semibold">Upload Audio</div>
+											<div className="text-xs text-muted-foreground">Nouveau projet</div>
+										</div>
+									</Button>
+								)}
 							</div>
 						</div>
 					</section>

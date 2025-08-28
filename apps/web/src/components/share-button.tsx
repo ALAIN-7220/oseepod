@@ -45,9 +45,9 @@ export function ShareButton({
 	// Generate episode URL (in a real app, this would be the actual URL)
 	const episodeUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/episode/${episode.id}`;
 
-	const shareText = `🎧 Écoutez "${episode.title}" par ${episode.pastor.name} sur OseePod`;
+	const shareText = `🎧 Écoutez "${episode.title}" par ${episode.pastor?.name || "Aucun pasteur"} sur OseePod`;
 	const emailSubject = `Épisode recommandé: ${episode.title}`;
-	const emailBody = `Bonjour,\n\nJe vous recommande cet épisode de podcast: "${episode.title}" par ${episode.pastor.name}.\n\n${episode.description}\n\nÉcoutez-le ici: ${episodeUrl}\n\nBonne écoute !`;
+	const emailBody = `Bonjour,\n\nJe vous recommande cet épisode de podcast: "${episode.title}" par ${episode.pastor?.name || "Aucun pasteur"}.\n\n${episode.description}\n\nÉcoutez-le ici: ${episodeUrl}\n\nBonne écoute !`;
 
 	const handleCopyLink = async () => {
 		try {

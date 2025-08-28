@@ -176,3 +176,4 @@ export const uploadedFiles = pgTable("uploaded_files", {
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+

@@ -831,7 +831,7 @@ export const podcastRouter = router({
 			z.object({
 				title: z.string().min(1, "Title is required"),
 				description: z.string().optional(),
-				pastorId: z.number().min(1, "Pastor is required"),
+				pastorId: z.number().min(1).optional(),
 				categoryId: z.number().min(1, "Category is required"),
 				audioFileId: z.number().min(1, "Audio file is required"),
 				thumbnailFileId: z.number().optional(),

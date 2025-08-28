@@ -7,6 +7,7 @@ import {
 	Cloud,
 	type File,
 	FileAudio,
+	Image,
 	Mic,
 	Music,
 	Pause,
@@ -34,17 +35,20 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/utils/trpc";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 interface AudioFile {
 	id: string;
 	file: File;
 	title: string;
 	description: string;
-	pastor: string;
+	pastor?: string; // Optionnel
 	category: string;
 	duration: number;
 	size: number;
 	audioUrl: string;
+	thumbnailFile?: File; // Image optionnelle
+	thumbnailUrl?: string; // Preview de l'image
 	isPlaying: boolean;
 }
 
@@ -110,11 +114,13 @@ export default function UploadPage() {
 				file,
 				title: file.name.replace(/\.[^/.]+$/, ""),
 				description: "",
-				pastor: "",
+				pastor: undefined, // Pasteur optionnel
 				category: "",
 				duration: audio.duration,
 				size: file.size,
 				audioUrl,
+				thumbnailFile: undefined, // Image optionnelle
+				thumbnailUrl: undefined,
 				isPlaying: false,
 			};
 
@@ -274,7 +280,7 @@ export default function UploadPage() {
 		// Complete upload
 		console.log("Completing upload with ID:", uploadId);
 		const completeResponse = await fetch(
-			`${baseUrl}/api/upload/chunk/complete/${uploadId}`,
+			`${baseUrl}/api/upload/complete/${uploadId}`,
 			{
 				method: "POST",
 				credentials: "include",
@@ -291,8 +297,29 @@ export default function UploadPage() {
 		return await completeResponse.json();
 	};
 
+	// Handle image upload
+	const handleImageUpload = (fileId: string, imageFile: File) => {
+		const imageUrl = URL.createObjectURL(imageFile);
+		updateAudioFile(fileId, {
+			thumbnailFile: imageFile,
+			thumbnailUrl: imageUrl,
+		});
+	};
+
+	// Remove image
+	const removeImage = (fileId: string) => {
+		const audioFile = audioFiles.find(f => f.id === fileId);
+		if (audioFile?.thumbnailUrl) {
+			URL.revokeObjectURL(audioFile.thumbnailUrl);
+		}
+		updateAudioFile(fileId, {
+			thumbnailFile: undefined,
+			thumbnailUrl: undefined,
+		});
+	};
+
 	const uploadToServer = async (file: AudioFile) => {
-		if (!file.pastor || !file.category || !file.title.trim()) {
+		if (!file.category || !file.title.trim()) {
 			toast.error("Veuillez remplir tous les champs obligatoires");
 			return;
 		}
@@ -314,11 +341,16 @@ export default function UploadPage() {
 			}
 
 			// Find pastor and category IDs
-			const pastor = pastors.find((p) => p.name === file.pastor);
+			const pastor = file.pastor && file.pastor !== "none" ? pastors.find((p) => p.name === file.pastor) : null;
 			const category = categories.find((c) => c.name === file.category);
 
-			if (!pastor || !category) {
-				toast.error("Pasteur ou catégorie non trouvé");
+			if (!category) {
+				toast.error("Catégorie non trouvée");
+				return;
+			}
+
+			if (file.pastor && file.pastor !== "none" && !pastor) {
+				toast.error("Pasteur non trouvé");
 				return;
 			}
 
@@ -326,7 +358,7 @@ export default function UploadPage() {
 			await createEpisodeMutation.mutateAsync({
 				title: file.title,
 				description: file.description || undefined,
-				pastorId: pastor.id,
+				pastorId: pastor?.id || undefined,
 				categoryId: category.id,
 				audioFileId: uploadedFile.id,
 			});
@@ -361,6 +393,7 @@ export default function UploadPage() {
 	);
 
 	return (
+		<ProtectedRoute requireAdmin>
 		<div className="min-h-screen bg-background pb-24">
 			{/* Header */}
 			<div className="border-b bg-gradient-to-br from-primary/10 via-primary/5 to-background">
@@ -514,7 +547,6 @@ export default function UploadPage() {
 															onClick={() => uploadToServer(audioFile)}
 															disabled={
 																!audioFile.title ||
-																!audioFile.pastor ||
 																!audioFile.category ||
 																isUploading
 															}
@@ -556,7 +588,7 @@ export default function UploadPage() {
 
 													<div className="space-y-2">
 														<Label htmlFor={`pastor-${audioFile.id}`}>
-															Pasteur
+															Pasteur (optionnel)
 														</Label>
 														<Select
 															value={audioFile.pastor}
@@ -565,17 +597,22 @@ export default function UploadPage() {
 															}
 														>
 															<SelectTrigger>
-																<SelectValue placeholder="Choisir un pasteur" />
+																<SelectValue placeholder="Choisir un pasteur (optionnel)" />
 															</SelectTrigger>
 															<SelectContent>
-																{pastors.map((pastor) => (
-																	<SelectItem
-																		key={pastor.id}
-																		value={pastor.name}
-																	>
-																		{pastor.name}
-																	</SelectItem>
-																))}
+																<SelectItem value="none">
+																	Aucun pasteur
+																</SelectItem>
+																{pastors
+																	.filter((pastor) => pastor.name && pastor.name.trim() !== "")
+																	.map((pastor) => (
+																		<SelectItem
+																			key={pastor.id}
+																			value={pastor.name}
+																		>
+																			{pastor.name}
+																		</SelectItem>
+																	))}
 															</SelectContent>
 														</Select>
 													</div>
@@ -596,22 +633,24 @@ export default function UploadPage() {
 																<SelectValue placeholder="Choisir une catégorie" />
 															</SelectTrigger>
 															<SelectContent>
-																{categories.map((category) => (
-																	<SelectItem
-																		key={category.id}
-																		value={category.name}
-																	>
-																		<div className="flex items-center gap-2">
-																			<div
-																				className="h-3 w-3 rounded-full"
-																				style={{
-																					backgroundColor: category.color,
-																				}}
-																			/>
-																			{category.name}
-																		</div>
-																	</SelectItem>
-																))}
+																{categories
+																	.filter((category) => category.name && category.name.trim() !== "")
+																	.map((category) => (
+																		<SelectItem
+																			key={category.id}
+																			value={category.name}
+																		>
+																			<div className="flex items-center gap-2">
+																				<div
+																					className="h-3 w-3 rounded-full"
+																					style={{
+																						backgroundColor: category.color,
+																					}}
+																				/>
+																				{category.name}
+																			</div>
+																		</SelectItem>
+																	))}
 															</SelectContent>
 														</Select>
 													</div>
@@ -651,6 +690,82 @@ export default function UploadPage() {
 															rows={3}
 														/>
 													</div>
+
+													{/* Image Upload Section */}
+													<div className="space-y-2 md:col-span-2">
+														<Label htmlFor={`image-${audioFile.id}`}>
+															Image (optionnelle)
+														</Label>
+														{audioFile.thumbnailUrl ? (
+															<div className="space-y-2">
+																<div className="relative w-32 h-32 border-2 border-dashed border-border rounded-lg overflow-hidden">
+																	<img 
+																		src={audioFile.thumbnailUrl} 
+																		alt="Thumbnail preview" 
+																		className="w-full h-full object-cover"
+																	/>
+																	<Button
+																		variant="outline"
+																		size="sm"
+																		onClick={() => removeImage(audioFile.id)}
+																		className="absolute top-1 right-1 h-6 w-6 p-0 text-destructive hover:text-destructive"
+																	>
+																		<X className="h-3 w-3" />
+																	</Button>
+																</div>
+																<Button
+																	variant="outline"
+																	size="sm"
+																	onClick={() => {
+																		const input = document.createElement('input');
+																		input.type = 'file';
+																		input.accept = 'image/*';
+																		input.onchange = (e) => {
+																			const file = (e.target as HTMLInputElement).files?.[0];
+																			if (file) {
+																				handleImageUpload(audioFile.id, file);
+																			}
+																		};
+																		input.click();
+																	}}
+																	className="gap-2"
+																>
+																	<Image className="h-4 w-4" />
+																	Changer l'image
+																</Button>
+															</div>
+														) : (
+															<div 
+																className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
+																onClick={() => {
+																	const input = document.createElement('input');
+																	input.type = 'file';
+																	input.accept = 'image/*';
+																	input.onchange = (e) => {
+																		const file = (e.target as HTMLInputElement).files?.[0];
+																		if (file) {
+																			handleImageUpload(audioFile.id, file);
+																		}
+																	};
+																	input.click();
+																}}
+															>
+																<div className="space-y-2">
+																	<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+																		<Image className="h-6 w-6 text-muted-foreground" />
+																	</div>
+																	<div>
+																		<p className="text-sm text-muted-foreground">
+																			Cliquez pour ajouter une image
+																		</p>
+																		<p className="text-xs text-muted-foreground">
+																			PNG, JPG, WebP jusqu'à 10MB
+																		</p>
+																	</div>
+																</div>
+															</div>
+														)}
+													</div>
 												</div>
 											</div>
 										</CardContent>
@@ -686,5 +801,6 @@ export default function UploadPage() {
 				</div>
 			</div>
 		</div>
+		</ProtectedRoute>
 	);
 }

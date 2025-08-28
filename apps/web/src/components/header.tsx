@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ModeToggle } from "./mode-toggle";
 import UserMenu from "./user-menu";
 import { Button } from "./ui/button";
+import { useAuth } from "@/lib/useAuth";
 import { 
 	Home, 
 	Search, 
@@ -12,21 +13,40 @@ import {
 	Mic,
 	User,
 	Grid3X3,
-	Upload
+	Upload,
+	Shield,
+	Users
 } from "lucide-react";
 
 export default function Header() {
 	const pathname = usePathname();
+	const { isAuthenticated, isAdmin, isLoading } = useAuth();
 	
-	const links = [
+	// Base links for all users
+	const baseLinks = [
 		{ to: "/", label: "Accueil", icon: Home },
 		{ to: "/home", label: "OseePod", icon: Mic },
 		{ to: "/explore", label: "Explorer", icon: Search },
+	];
+	
+	// Links for authenticated users
+	const userLinks = [
 		{ to: "/library", label: "Bibliothèque", icon: BookOpen },
+	];
+	
+	// Admin-only links
+	const adminLinks = [
 		{ to: "/upload", label: "Upload", icon: Upload },
+		{ to: "/dashboard", label: "Admin", icon: Shield },
 		{ to: "/components", label: "Composants", icon: Grid3X3 },
-		{ to: "/dashboard", label: "Dashboard", icon: Settings },
-	] as const;
+	];
+	
+	// Build links based on user role
+	const links = [
+		...baseLinks,
+		...(isAuthenticated ? userLinks : []),
+		...(isAdmin ? adminLinks : []),
+	];
 
 	const isActive = (path: string) => {
 		if (path === "/" && pathname === "/") return true;
