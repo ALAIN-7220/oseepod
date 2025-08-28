@@ -3,4 +3,3 @@ node_modules
 .alchemy
 .env
 apps/server/uploads/
-apps/web/src/app/upload/
