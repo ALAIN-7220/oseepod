@@ -1,0 +1,112 @@
+---
+title: Accès Administrateur
+description: Guide pour accéder et utiliser les fonctionnalités administrateur d'OseePod
+---
+
+# Accès Administrateur OseePod
+
+Ce guide explique comment accéder aux fonctionnalités d'administration d'OseePod et comment uploader du contenu.
+
+## Identifiants Administrateur
+
+Pour accéder aux fonctions d'administration, utilisez les identifiants suivants :
+
+- **Email** : `admin@oseepod.com`
+- **Mot de passe** : `admin123`
+
+## Accès à l'Application
+
+1. **Démarrer l'application** :
+   ```bash
+   # Depuis le dossier racine du projet
+   cd apps/server && bun run dev    # Terminal 1 - Backend (port 3000)
+   cd apps/web && bun run dev       # Terminal 2 - Frontend (port 3001)
+   ```
+
+2. **Se connecter** :
+   - Ouvrez votre navigateur sur `http://localhost:3001`
+   - Cliquez sur "Se connecter"
+   - Saisissez les identifiants administrateur ci-dessus
+
+## Fonctionnalités Administrateur
+
+Une fois connecté en tant qu'administrateur, vous avez accès à :
+
+### Upload de Contenu Audio
+
+1. **Accéder à la page d'upload** :
+   - Naviguez vers `/upload` ou cliquez sur "Upload" dans le menu
+
+2. **Uploader un fichier audio** :
+   - **Formats supportés** : MP3, WAV, M4A, FLAC, OGG
+   - **Taille maximum** : 2GB par fichier
+   - **Upload par chunks** : Système optimisé pour les gros fichiers (>1h)
+
+3. **Métadonnées de l'épisode** :
+   - **Titre** : Obligatoire
+   - **Description** : Optionnelle
+   - **Pasteur** : **OPTIONNEL** - Vous pouvez choisir "Aucun pasteur"
+   - **Catégorie** : Obligatoire
+   - **Image de couverture** : **OPTIONNELLE** - Upload d'image d'accompagnement
+
+### Fonctions d'Upload Améliorées
+
+Le système d'upload a été amélioré pour offrir :
+
+- ✅ **Pastor Assignment Optionnel** : Vous n'êtes plus obligé d'assigner un pasteur
+- ✅ **Image Upload** : Possibilité d'ajouter une image de couverture
+- ✅ **Large File Support** : Upload optimisé pour les fichiers de plus d'1 heure
+- ✅ **Chunk Upload System** : Upload fiable avec reprise en cas d'interruption
+
+## Processus d'Upload Détaillé
+
+### 1. Sélection du Fichier Audio
+- Glissez-déposez ou cliquez pour sélectionner votre fichier audio
+- Le système affichera automatiquement la durée et la taille du fichier
+
+### 2. Métadonnées
+- **Titre** : Nom de l'épisode (obligatoire)
+- **Description** : Description détaillée (optionnelle)
+- **Pastor** : Sélectionnez un pasteur ou choisissez "Aucun pasteur"
+- **Catégorie** : Choisissez une catégorie existante
+
+### 3. Image de Couverture (Optionnel)
+- **Formats supportés** : JPEG, PNG, WebP, GIF
+- **Taille recommandée** : 1400x1400px minimum
+- Cliquez sur "Sélectionner une image" pour ajouter une couverture
+
+### 4. Upload
+- Cliquez sur "Publier l'épisode"
+- Le système utilisera l'upload par chunks pour les gros fichiers
+- Suivez la progression dans la barre de chargement
+
+## Dépannage
+
+### Problèmes d'Upload
+- **Erreur 404 lors de la complétion** : Redémarrez les deux serveurs (backend + frontend)
+- **Session expirée** : Reconnectez-vous avec les identifiants admin
+- **Fichier trop lourd** : Le système accepte jusqu'à 2GB
+
+### Problèmes de Connexion
+- **"Accès refusé"** : Vérifiez que vous êtes bien connecté en tant qu'admin
+- **Erreur de session** : Effacez les cookies du navigateur et reconnectez-vous
+
+## Structure de Base de Données
+
+Les épisodes sont stockés avec les champs suivants :
+- `pastorId` : **NULLABLE** - Permet des épisodes sans pasteur assigné
+- `thumbnailUrl` : **NULLABLE** - Image de couverture optionnelle
+- `audioUrl` : Lien vers le fichier audio uploadé
+- `duration` : Calculée automatiquement lors de l'upload
+
+## Notes Techniques
+
+- **Backend** : Hono.js sur port 3000
+- **Frontend** : Next.js sur port 3001
+- **Base de données** : PostgreSQL avec schéma Drizzle
+- **Authentication** : Better Auth avec rôles utilisateur
+- **Storage** : Fichiers stockés dans `/uploads/`
+
+---
+
+Pour toute question technique ou problème, consultez les logs des serveurs dans les terminaux.
