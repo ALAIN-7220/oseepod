@@ -23,7 +23,21 @@ app.use(
 	}),
 );
 
-app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw));
+// Test endpoint first
+app.get("/api/test", (c) => c.json({ message: "API is working" }));
+
+// Better Auth handler - debug version
+app.all("/api/auth/*", async (c) => {
+	console.log("Auth endpoint hit:", c.req.url, c.req.method);
+	try {
+		const response = await auth.handler(c.req.raw);
+		console.log("Auth handler response:", response);
+		return response;
+	} catch (error) {
+		console.error("Auth handler error:", error);
+		return c.json({ error: "Auth handler failed" }, 500);
+	}
+});
 
 // Upload routes
 app.route("/api/upload", uploadRouter);
