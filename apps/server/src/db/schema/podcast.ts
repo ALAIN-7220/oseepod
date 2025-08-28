@@ -7,6 +7,8 @@ import {
 	serial,
 	text,
 	timestamp,
+	bigint,
+	bytea,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
@@ -151,4 +153,26 @@ export const downloads = pgTable("downloads", {
 	downloadedAt: timestamp("downloaded_at").defaultNow().notNull(),
 	filePath: text("file_path"),
 	isActive: boolean("is_active").default(true),
+});
+
+export const uploadedFiles = pgTable("uploaded_files", {
+	id: serial("id").primaryKey(),
+	userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+	filename: text("filename").notNull(),
+	originalName: text("original_name").notNull(),
+	mimeType: text("mime_type").notNull(),
+	fileSize: bigint("file_size", { mode: 'number' }).notNull(),
+	filePath: text("file_path").notNull(), // Path where file is stored
+	fileType: text("file_type").notNull(), // 'audio' | 'image' | 'document'
+	duration: integer("duration"), // For audio files
+	metadata: jsonb("metadata").$type<{
+		width?: number;
+		height?: number;
+		bitrate?: number;
+		sampleRate?: number;
+		channels?: number;
+	}>(),
+	uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

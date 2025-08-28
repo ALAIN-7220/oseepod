@@ -3,6 +3,9 @@ dist/
 /build
 /out/
 
+apps/server/uploads/
+
+public/podcast/*
 # dev
 .yarn/
 !.yarn/patches

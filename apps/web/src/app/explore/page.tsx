@@ -3,6 +3,7 @@
 import {
 	Calendar,
 	ChevronDown,
+	ChevronRight,
 	Clock,
 	Download,
 	Filter,
@@ -19,9 +20,9 @@ import {
 	X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { CategoryFilter } from "@/components/category-filter";
+import { useRouter } from "next/navigation";
 import { EpisodeCard } from "@/components/episode-card";
-import { MiniPlayer } from "@/components/mini-player";
+import { useAudio } from "@/contexts/audio-context";
 import { SearchBar } from "@/components/search-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { mockCategories, mockEpisodes, mockPastors } from "@/lib/test-data";
+import { trpc } from "@/utils/trpc";
 
 type SortOption =
 	| "latest"
@@ -50,9 +51,13 @@ type SortOption =
 type ViewMode = "grid" | "list";
 
 export default function ExplorePage() {
-	const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
-	const [isPlaying, setIsPlaying] = useState(false);
+	const router = useRouter();
+	const { playEpisode, currentEpisode, isPlaying } = useAudio();
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
+	const [favorites, setFavorites] = useState<string[]>([]);
+	const [downloads, setDownloads] = useState<string[]>([]);
+	const [displayedCount, setDisplayedCount] = useState(12);
+	const [categoryViewMode, setCategoryViewMode] = useState<'bento' | 'pills'>('bento');
 
 	// Filters state
 	const [searchQuery, setSearchQuery] = useState("");
@@ -65,19 +70,13 @@ export default function ExplorePage() {
 	const [onlyFavorites, setOnlyFavorites] = useState(false);
 	const [minRating, setMinRating] = useState([0]);
 
-	// Mock data for filters
-	const allEpisodes = [
-		...mockEpisodes,
-		...mockEpisodes.map((ep, index) => ({
-			...ep,
-			id: ep.id + 1000 + index,
-			publishedAt: new Date(
-				Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000,
-			),
-			playCount: Math.floor(Math.random() * 5000) + 100,
-			rating: Math.round((Math.random() * 2 + 3) * 10) / 10, // 3.0 to 5.0
-		})),
-	];
+	// Fetch data from API
+	const { data: allEpisodes = [], isLoading: episodesLoading } = trpc.podcast.getEpisodes.useQuery({ 
+		limit: 100, 
+		offset: 0 
+	});
+	const { data: categories = [] } = trpc.podcast.getCategories.useQuery();
+	const { data: pastors = [] } = trpc.podcast.getPastors.useQuery();
 
 	const filteredAndSortedEpisodes = useMemo(() => {
 		let filtered = allEpisodes.filter((episode) => {
@@ -117,11 +116,11 @@ export default function ExplorePage() {
 
 		// Apply additional filters
 		if (onlyDownloaded) {
-			filtered = filtered.filter((_, index) => index % 3 === 0); // Mock downloaded episodes
+			filtered = filtered.filter((episode) => downloads.includes(episode.id.toString()));
 		}
 
 		if (onlyFavorites) {
-			filtered = filtered.filter((_, index) => index % 4 === 0); // Mock favorite episodes
+			filtered = filtered.filter((episode) => favorites.includes(episode.id.toString()));
 		}
 
 		// Sort episodes
@@ -167,11 +166,44 @@ export default function ExplorePage() {
 		onlyDownloaded,
 		onlyFavorites,
 		minRating,
+		favorites,
+		downloads,
 	]);
 
 	const handleEpisodeSelect = (episode: any) => {
-		setSelectedEpisode(episode);
-		setIsPlaying(true);
+		playEpisode(episode);
+	};
+
+	const handleAddToFavorites = (episodeId: string) => {
+		setFavorites(prev => 
+			prev.includes(episodeId) 
+				? prev.filter(id => id !== episodeId)
+				: [...prev, episodeId]
+		);
+	};
+
+	const handleDownload = (episodeId: string) => {
+		setDownloads(prev => 
+			prev.includes(episodeId) 
+				? prev.filter(id => id !== episodeId)
+				: [...prev, episodeId]
+		);
+		console.log(`Downloaded episode: ${episodeId}`);
+	};
+
+	const handleLoadMore = () => {
+		setDisplayedCount(prev => prev + 12);
+	};
+
+	const handleCategorySelect = (category: any) => {
+		setSelectedCategory(category);
+		// Scroll to results section
+		setTimeout(() => {
+			const resultsSection = document.getElementById('results-section');
+			if (resultsSection) {
+				resultsSection.scrollIntoView({ behavior: 'smooth' });
+			}
+		}, 100);
 	};
 
 	const clearFilters = () => {
@@ -194,6 +226,18 @@ export default function ExplorePage() {
 		minRating[0] > 0,
 	].filter(Boolean).length;
 
+	// Show loading state
+	if (episodesLoading) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center space-y-4">
+					<div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+					<p className="text-muted-foreground">Chargement des épisodes...</p>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="min-h-screen bg-background pb-24">
 			{/* Header */}
@@ -206,23 +250,68 @@ export default function ExplorePage() {
 								<p className="text-muted-foreground text-xl">
 									Découvrez tous nos épisodes de podcast
 								</p>
-								<div className="mt-2 flex items-center gap-2">
-									<Badge variant="secondary">
+								<div className="mt-4 flex flex-wrap items-center gap-3">
+									<Badge variant="secondary" className="flex items-center gap-1">
+										<Headphones className="h-3 w-3" />
 										{filteredAndSortedEpisodes.length} épisodes trouvés
 									</Badge>
 									{activeFiltersCount > 0 && (
 										<Badge
 											variant="outline"
-											className="border-primary text-primary"
+											className="border-primary text-primary flex items-center gap-1"
 										>
+											<Filter className="h-3 w-3" />
 											{activeFiltersCount} filtre(s) actif(s)
+										</Badge>
+									)}
+									{selectedCategory && (
+										<Badge 
+											variant="default"
+											className="flex items-center gap-1"
+											style={{ backgroundColor: selectedCategory.color }}
+										>
+											<div className="h-2 w-2 rounded-full bg-white/80" />
+											{selectedCategory.name}
+										</Badge>
+									)}
+									{favorites.length > 0 && (
+										<Badge variant="outline" className="flex items-center gap-1 text-red-500 border-red-500">
+											<Heart className="h-3 w-3 fill-current" />
+											{favorites.length} favoris
+										</Badge>
+									)}
+									{downloads.length > 0 && (
+										<Badge variant="outline" className="flex items-center gap-1 text-green-500 border-green-500">
+											<Download className="h-3 w-3 fill-current" />
+											{downloads.length} téléchargés
 										</Badge>
 									)}
 								</div>
 							</div>
 
-							<div className="w-full lg:w-96">
-								<SearchBar onSearch={setSearchQuery} />
+							<div className="w-full space-y-3 lg:w-96">
+								<SearchBar 
+									onSearch={setSearchQuery}
+									placeholder="Rechercher épisodes, pasteurs, sujets..."
+								/>
+								{searchQuery && (
+									<div className="flex flex-wrap items-center gap-2 text-sm">
+										<span className="text-muted-foreground">Recherche:</span>
+										<Badge variant="outline" className="gap-1">
+											<Search className="h-3 w-3" />
+											"{searchQuery}"
+										</Badge>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => setSearchQuery("")}
+											className="h-6 px-2 text-xs"
+										>
+											<X className="mr-1 h-3 w-3" />
+											Effacer
+										</Button>
+									</div>
+								)}
 							</div>
 						</div>
 					</div>
@@ -231,14 +320,312 @@ export default function ExplorePage() {
 
 			<div className="container mx-auto px-4 py-8">
 				<div className="space-y-8">
-					{/* Category Filter */}
-					<div className="space-y-4">
-						<h2 className="font-semibold text-lg">Parcourir par Catégorie</h2>
-						<CategoryFilter
-							categories={mockCategories}
-							selectedCategory={selectedCategory}
-							onCategorySelect={setSelectedCategory}
-						/>
+					{/* Search Suggestions */}
+					{searchQuery && filteredAndSortedEpisodes.length === 0 && (
+						<Card className="border-dashed">
+							<CardContent className="p-6 text-center">
+								<Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+								<h3 className="mb-2 font-semibold">Aucun résultat pour "{searchQuery}"</h3>
+								<p className="mb-4 text-muted-foreground text-sm">
+									Essayez des termes plus généraux ou parcourez par catégorie
+								</p>
+								<div className="flex flex-wrap justify-center gap-2">
+									<Button 
+										variant="outline" 
+										size="sm" 
+										onClick={() => setSearchQuery("enseignement")}
+									>
+										Enseignement
+									</Button>
+									<Button 
+										variant="outline" 
+										size="sm" 
+										onClick={() => setSearchQuery("prière")}
+									>
+										Prière
+									</Button>
+									<Button 
+										variant="outline" 
+										size="sm" 
+										onClick={() => setSearchQuery("jeunesse")}
+									>
+										Jeunesse
+									</Button>
+								</div>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Quick Stats & Shortcuts */}
+					{!selectedCategory && activeFiltersCount === 0 && (
+						<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+							<Card className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105">
+								<CardContent className="p-4 text-center">
+									<div className="flex flex-col items-center space-y-2">
+										<div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+											<Clock className="h-5 w-5" />
+										</div>
+										<div>
+											<div className="font-bold text-lg">{allEpisodes.filter(ep => {
+												const daysDiff = (Date.now() - new Date(ep.publishedAt).getTime()) / (1000 * 60 * 60 * 24);
+												return daysDiff <= 7;
+											}).length}</div>
+											<div className="text-muted-foreground text-xs">Cette semaine</div>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+							
+							<Card className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105" onClick={() => setSortBy('popular')}>
+								<CardContent className="p-4 text-center">
+									<div className="flex flex-col items-center space-y-2">
+										<div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+											<TrendingUp className="h-5 w-5" />
+										</div>
+										<div>
+											<div className="font-bold text-lg">{allEpisodes.filter(ep => ep.playCount > 1000).length}</div>
+											<div className="text-muted-foreground text-xs">Populaires</div>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+							
+							<Card className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105" onClick={() => setOnlyFavorites(!onlyFavorites)}>
+								<CardContent className="p-4 text-center">
+									<div className="flex flex-col items-center space-y-2">
+										<div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+											<Heart className="h-5 w-5" />
+										</div>
+										<div>
+											<div className="font-bold text-lg">{favorites.length}</div>
+											<div className="text-muted-foreground text-xs">Mes favoris</div>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+							
+							<Card className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105" onClick={() => setOnlyDownloaded(!onlyDownloaded)}>
+								<CardContent className="p-4 text-center">
+									<div className="flex flex-col items-center space-y-2">
+										<div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
+											<Download className="h-5 w-5" />
+										</div>
+										<div>
+											<div className="font-bold text-lg">{downloads.length}</div>
+											<div className="text-muted-foreground text-xs">Téléchargés</div>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+					)}
+					{/* Bento-Style Category Grid */}
+					<div className="space-y-6">
+						<div className="flex items-center justify-between">
+							<h2 className="flex items-center gap-2 font-bold text-2xl">
+								<Grid3X3 className="h-6 w-6 text-primary" />
+								Parcourir par Catégorie
+							</h2>
+							{selectedCategory && (
+								<Button
+									variant="ghost"
+									onClick={() => handleCategorySelect(null)}
+									className="text-primary"
+								>
+									<X className="mr-1 h-4 w-4" />
+									Effacer la sélection
+								</Button>
+							)}
+						</div>
+						
+						{/* Bento Grid Layout */}
+						{categoryViewMode === 'bento' && (
+							<div className="grid auto-rows-fr grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 animate-in fade-in-50">
+							{categories.map((category, index) => {
+								const isSelected = selectedCategory?.id === category.id;
+								const episodeCount = allEpisodes.filter(ep => ep.category.name === category.name).length;
+								
+								// Create dynamic layouts for variety
+								const layouts = [
+									'md:col-span-2 md:row-span-2', // Large square
+									'md:col-span-2', // Wide rectangle  
+									'md:row-span-2', // Tall rectangle
+									'', // Normal square
+									'md:col-span-2', // Wide rectangle
+									'', // Normal square
+								];
+								
+								const layout = layouts[index % layouts.length] || '';
+								
+								return (
+									<Card
+										key={category.id}
+										className={`group relative cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-2xl ${layout} ${
+											isSelected 
+												? 'ring-2 ring-primary shadow-xl scale-105 z-10' 
+												: 'hover:scale-102'
+										}`}
+										onClick={() => handleCategorySelect(category)}
+									>
+										{/* Background Gradient */}
+										<div 
+											className="absolute inset-0 opacity-90"
+											style={{ 
+												background: `linear-gradient(135deg, ${category.color}15 0%, ${category.color}25 50%, ${category.color}10 100%)`
+											}}
+										/>
+										
+										{/* Decorative Elements */}
+										<div 
+											className="absolute -top-4 -right-4 h-16 w-16 rounded-full opacity-20"
+											style={{ backgroundColor: category.color }}
+										/>
+										<div 
+											className="absolute -bottom-2 -left-2 h-8 w-8 rounded-full opacity-30"
+											style={{ backgroundColor: category.color }}
+										/>
+										
+										<CardContent className={`relative z-10 flex h-full flex-col justify-between p-4 ${
+											layout.includes('row-span-2') ? 'p-6' : 'p-4'
+										}`}>
+											<div className="space-y-3">
+												{/* Category Icon */}
+												<div className="flex items-center justify-between">
+													<div 
+														className={`flex items-center justify-center rounded-lg shadow-sm transition-all ${
+															layout.includes('row-span-2') ? 'h-12 w-12' : 'h-8 w-8'
+														}`}
+														style={{ 
+															backgroundColor: category.color + '30',
+															color: category.color
+														}}
+													>
+														<div 
+															className={`rounded-full ${
+																layout.includes('row-span-2') ? 'h-6 w-6' : 'h-4 w-4'
+															}`}
+															style={{ backgroundColor: category.color }}
+														/>
+													</div>
+													
+													{isSelected && (
+														<Badge 
+															variant="default" 
+															className="animate-in fade-in-50 scale-75"
+															style={{ backgroundColor: category.color }}
+														>
+															✓
+														</Badge>
+													)}
+												</div>
+												
+												{/* Category Info */}
+												<div className="space-y-1">
+													<h3 className={`font-bold transition-colors ${
+														layout.includes('row-span-2') ? 'text-base' : 'text-sm'
+													} ${
+														isSelected ? 'text-primary' : 'group-hover:text-primary'
+													}`}>
+														{category.name}
+													</h3>
+													
+													{layout.includes('row-span-2') && category.description && (
+														<p className="text-muted-foreground text-xs leading-relaxed">
+															{category.description}
+														</p>
+													)}
+												</div>
+											</div>
+											
+											{/* Episode Count */}
+											<div className="flex items-center justify-between pt-2">
+												<div className="flex items-center gap-1">
+													<Headphones className="h-3 w-3 text-muted-foreground" />
+													<span className="font-medium text-muted-foreground text-xs">
+														{episodeCount}
+													</span>
+												</div>
+												
+												<ChevronRight className={`transition-transform group-hover:translate-x-1 ${
+													layout.includes('row-span-2') ? 'h-4 w-4' : 'h-3 w-3'
+												} text-muted-foreground`} />
+											</div>
+											
+											{/* Hover Effect Overlay */}
+											<div className={`absolute inset-0 transition-all duration-300 ${
+												isSelected 
+													? 'bg-primary/5 opacity-100' 
+													: 'bg-white/10 opacity-0 group-hover:opacity-100'
+											}`} />
+										</CardContent>
+									</Card>
+								);
+							})}
+							</div>
+						)}
+						
+						{/* Alternative: Compact Pills Layout Toggle */}
+						<div className="flex justify-center">
+							<div className="flex items-center gap-2">
+								<Button
+									variant={categoryViewMode === 'bento' ? 'default' : 'outline'}
+									size="sm"
+									onClick={() => setCategoryViewMode('bento')}
+									className="gap-2"
+								>
+									<Grid3X3 className="h-4 w-4" />
+									Grille
+								</Button>
+								<Button
+									variant={categoryViewMode === 'pills' ? 'default' : 'outline'}
+									size="sm"
+									onClick={() => setCategoryViewMode('pills')}
+									className="gap-2"
+								>
+									<List className="h-4 w-4" />
+									Compacte
+								</Button>
+							</div>
+						</div>
+						
+						{/* Compact Pills Alternative */}
+						{categoryViewMode === 'pills' && (
+							<div className="animate-in fade-in-50 slide-in-from-bottom-5">
+							<div className="flex flex-wrap gap-2">
+								{categories.map((category) => {
+									const isSelected = selectedCategory?.id === category.id;
+									const episodeCount = allEpisodes.filter(ep => ep.category.name === category.name).length;
+									
+									return (
+										<Button
+											key={`pill-${category.id}`}
+											variant={isSelected ? "default" : "outline"}
+											size="sm"
+											onClick={() => handleCategorySelect(category)}
+											className={`transition-all duration-200 hover:scale-105 ${
+												isSelected ? '' : 'hover:border-primary hover:text-primary'
+											}`}
+											style={isSelected ? { 
+												backgroundColor: category.color,
+												borderColor: category.color 
+											} : {
+												borderColor: category.color + '40'
+											}}
+										>
+											<div 
+												className="mr-2 h-2 w-2 rounded-full"
+												style={{ backgroundColor: category.color }}
+											/>
+											{category.name}
+											<Badge variant="secondary" className="ml-2 h-4 px-1.5 text-xs">
+												{episodeCount}
+											</Badge>
+										</Button>
+									);
+								})}
+							</div>
+							</div>
+						)}
 					</div>
 
 					{/* Controls */}
@@ -343,7 +730,7 @@ export default function ExplorePage() {
 											</SelectTrigger>
 											<SelectContent>
 												<SelectItem value="all">Tous les pasteurs</SelectItem>
-												{mockPastors.map((pastor) => (
+												{pastors.map((pastor) => (
 													<SelectItem key={pastor.id} value={pastor.name}>
 														{pastor.name}
 													</SelectItem>
@@ -426,7 +813,7 @@ export default function ExplorePage() {
 					)}
 
 					{/* Results */}
-					<div className="space-y-6">
+					<div id="results-section" className="space-y-6">
 						{filteredAndSortedEpisodes.length === 0 ? (
 							<Card className="py-12 text-center">
 								<CardContent>
@@ -447,43 +834,49 @@ export default function ExplorePage() {
 							<>
 								{viewMode === "grid" ? (
 									<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-										{filteredAndSortedEpisodes.map((episode, index) => (
+										{filteredAndSortedEpisodes.slice(0, displayedCount).map((episode) => (
 											<EpisodeCard
 												key={episode.id}
 												episode={episode}
 												onPlay={() => handleEpisodeSelect(episode)}
 												variant="default"
 												isPlaying={
-													selectedEpisode?.id === episode.id && isPlaying
+													currentEpisode?.id === episode.id && isPlaying
 												}
-												isLiked={index % 4 === 0}
-												isDownloaded={index % 3 === 0}
+												isLiked={favorites.includes(episode.id.toString())}
+												isDownloaded={downloads.includes(episode.id.toString())}
 											/>
 										))}
 									</div>
 								) : (
 									<div className="space-y-4">
-										{filteredAndSortedEpisodes.map((episode, index) => (
+										{filteredAndSortedEpisodes.slice(0, displayedCount).map((episode) => (
 											<EpisodeCard
 												key={episode.id}
 												episode={episode}
 												onPlay={() => handleEpisodeSelect(episode)}
 												variant="list"
 												isPlaying={
-													selectedEpisode?.id === episode.id && isPlaying
+													currentEpisode?.id === episode.id && isPlaying
 												}
-												isLiked={index % 4 === 0}
-												isDownloaded={index % 3 === 0}
+												isLiked={favorites.includes(episode.id.toString())}
+												isDownloaded={downloads.includes(episode.id.toString())}
 											/>
 										))}
 									</div>
 								)}
 
 								{/* Load More */}
-								{filteredAndSortedEpisodes.length > 12 && (
+								{filteredAndSortedEpisodes.length > displayedCount && (
 									<div className="pt-8 text-center">
-										<Button variant="outline" size="lg">
-											Charger plus d'épisodes
+										<Button 
+											variant="outline" 
+											size="lg"
+											onClick={handleLoadMore}
+											className="min-w-48"
+										>
+											<TrendingUp className="mr-2 h-4 w-4" />
+											Charger plus d'épisodes ({filteredAndSortedEpisodes.length - displayedCount} restants)
 										</Button>
 									</div>
 								)}
@@ -493,15 +886,6 @@ export default function ExplorePage() {
 				</div>
 			</div>
 
-			{/* Mini Player */}
-			{selectedEpisode && (
-				<MiniPlayer
-					episode={selectedEpisode}
-					isPlaying={isPlaying}
-					onPlayPause={() => setIsPlaying(!isPlaying)}
-					onExpand={() => console.log("Expand player")}
-				/>
-			)}
 		</div>
 	);
 }

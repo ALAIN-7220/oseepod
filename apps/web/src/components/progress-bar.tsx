@@ -120,7 +120,7 @@ export function ProgressBar({
 	return (
 		<div
 			ref={progressRef}
-			className="group relative h-2 cursor-pointer touch-none select-none rounded-full bg-secondary transition-all duration-200 hover:h-3"
+			className="group relative h-2 cursor-pointer touch-none select-none rounded-full bg-secondary/70 transition-all duration-200 hover:h-3"
 			onMouseDown={handleMouseDown}
 			onMouseMove={handleMouseMove}
 			onMouseUp={handleMouseUp}
@@ -128,7 +128,7 @@ export function ProgressBar({
 			onClick={handleClick}
 		>
 			{/* Background track */}
-			<div className="absolute inset-0 rounded-full bg-secondary" />
+			<div className="absolute inset-0 rounded-full bg-secondary/70 border border-border/20" />
 
 			{/* Preview progress (on hover, not dragging) */}
 			{!isDragging && previewTime > 0 && (

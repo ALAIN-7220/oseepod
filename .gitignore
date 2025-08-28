@@ -2,3 +2,5 @@ node_modules
 .turbo
 .alchemy
 .env
+apps/server/uploads/
+apps/web/src/app/upload/

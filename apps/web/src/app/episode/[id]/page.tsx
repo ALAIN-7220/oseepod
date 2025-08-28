@@ -41,13 +41,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { mockEpisodes, mockPastors } from "@/lib/test-data";
+import { trpc } from "@/utils/trpc";
 
 export default function EpisodeDetailPage() {
 	const params = useParams();
 	const episodeId = params?.id as string;
 
-	const [episode, setEpisode] = useState<any>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [isLiked, setIsLiked] = useState(false);
@@ -55,31 +54,43 @@ export default function EpisodeDetailPage() {
 	const [showComments, setShowComments] = useState(false);
 	const [newComment, setNewComment] = useState("");
 
-	// Find episode by ID
-	useEffect(() => {
-		const foundEpisode =
-			mockEpisodes.find((ep) => ep.id.toString() === episodeId) || mockEpisodes[0];
-		setEpisode({
-			...foundEpisode,
-			transcript:
-				"Bonjour mes frères et sœurs, bienvenue dans ce nouveau message. Aujourd'hui, nous allons explorer ensemble un thème fondamental de notre foi : la transformation par la grâce de Dieu. Dans Romains 12:2, Paul nous exhorte à ne pas nous conformer au siècle présent, mais à être transformés par le renouvellement de l'intelligence...",
-			chapters: [
-				{ time: 0, title: "Introduction" },
-				{ time: 300, title: "Le fondement de la foi" },
-				{ time: 900, title: "La transformation intérieure" },
-				{ time: 1800, title: "Vivre la transformation" },
-				{ time: 2400, title: "Conclusion et prière" },
-			],
-			stats: {
-				views: 12450,
-				likes: 892,
-				shares: 156,
-				comments: 47,
-				rating: 4.8,
-				completionRate: 78,
-			},
-		});
-	}, [episodeId]);
+	// Fetch episode by ID from database
+	const { data: episode, isLoading, error } = trpc.podcast.getEpisodeById.useQuery({ 
+		id: parseInt(episodeId) 
+	});
+	const { data: episodes = [] } = trpc.podcast.getEpisodes.useQuery({ 
+		limit: 4, 
+		offset: 0 
+	});
+
+	// Show loading state
+	if (isLoading) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center space-y-4">
+					<div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+					<p className="text-muted-foreground">Chargement de l'épisode...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Show error state
+	if (error || !episode) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center space-y-4">
+					<div className="text-red-500 text-lg">⚠️ Épisode non trouvé</div>
+					<p className="text-muted-foreground">
+						Cet épisode n'existe pas ou a été supprimé.
+					</p>
+					<Button onClick={() => window.history.back()}>
+						Retour
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
 	// Mock comments
 	const comments = [

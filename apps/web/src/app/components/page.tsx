@@ -47,13 +47,20 @@ import {
 	mockPastors,
 	mockUserStats,
 } from "@/lib/test-data";
+import { useAudio } from "@/contexts/audio-context";
 
 export default function ComponentsPage() {
+	const { playEpisode, currentEpisode, isPlaying } = useAudio();
 	const [currentTab, setCurrentTab] = useState("audio");
 	const [selectedEpisode, setSelectedEpisode] = useState(mockEpisodes[0]);
-	const [isPlaying, setIsPlaying] = useState(false);
 	const [queueEpisodes, setQueueEpisodes] = useState(mockEpisodes.slice(0, 5));
 	const [currentTime, setCurrentTime] = useState(1800);
+	
+	// Navigation tab states
+	const [searchQuery, setSearchQuery] = useState("");
+	const [selectedCategory, setSelectedCategory] = useState<any>(null);
+	const [filters, setFilters] = useState<any>({});
+	const [categoryDisplayMode, setCategoryDisplayMode] = useState<'default' | 'grid' | 'list'>('default');
 
 	const handleEpisodeSelect = (episode: any) => {
 		setSelectedEpisode(episode);
@@ -70,6 +77,37 @@ export default function ComponentsPage() {
 			"Queue reordered:",
 			newEpisodes.map((ep) => ep.title),
 		);
+	};
+
+	// Navigation handlers
+	const handleSearch = (query: string) => {
+		setSearchQuery(query);
+		console.log("Search query:", query);
+	};
+
+	const handleCategorySelect = (category: any) => {
+		setSelectedCategory(category);
+		console.log("Selected category:", category);
+	};
+
+	const handleFiltersChange = (newFilters: any) => {
+		setFilters(newFilters);
+		console.log("Filters applied:", newFilters);
+	};
+
+	const handleClearCategory = () => {
+		setSelectedCategory(null);
+		console.log("Category cleared");
+	};
+
+	const handleClearSearch = () => {
+		setSearchQuery("");
+		console.log("Search cleared");
+	};
+
+	const handleClearFilters = () => {
+		setFilters({});
+		console.log("All filters cleared");
 	};
 
 	return (
@@ -107,8 +145,8 @@ export default function ComponentsPage() {
 								<CardContent>
 									<AudioPlayer
 										episode={selectedEpisode}
-										isPlaying={isPlaying}
-										onPlayPause={() => setIsPlaying(!isPlaying)}
+										isPlaying={currentEpisode?.id === selectedEpisode.id && isPlaying}
+										onPlayPause={() => playEpisode(selectedEpisode)}
 									/>
 								</CardContent>
 							</Card>
@@ -119,15 +157,12 @@ export default function ComponentsPage() {
 								</CardHeader>
 								<CardContent>
 									<div className="relative h-20 overflow-hidden rounded-lg border bg-muted/20">
-										<MiniPlayer
-											episode={selectedEpisode}
-											isPlaying={isPlaying}
-											onPlayPause={() => setIsPlaying(!isPlaying)}
-											onExpand={() => console.log("Expand player")}
-										/>
+										<div className="flex items-center justify-center h-full text-muted-foreground">
+											<p className="text-sm">Mini Player utilise maintenant le contexte audio global</p>
+										</div>
 									</div>
 									<p className="mt-3 text-center text-muted-foreground text-sm">
-										Le mini player est aussi fixé en bas de la page
+										Le mini player est disponible globalement dans l'application
 									</p>
 								</CardContent>
 							</Card>
@@ -396,42 +431,150 @@ export default function ComponentsPage() {
 					{/* Navigation Components */}
 					<TabsContent value="navigation" className="space-y-6">
 						<div className="grid gap-6">
+							{/* Search Bar */}
 							<Card>
 								<CardHeader>
-									<CardTitle>Search Bar</CardTitle>
+									<CardTitle className="flex items-center justify-between">
+										Search Bar
+										{searchQuery && (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={handleClearSearch}
+											>
+												Effacer
+											</Button>
+										)}
+									</CardTitle>
 								</CardHeader>
-								<CardContent>
-									<SearchBar
-										onSearch={(query) => console.log("Search:", query)}
-									/>
+								<CardContent className="space-y-4">
+									<SearchBar onSearch={handleSearch} />
+									
+									{searchQuery && (
+										<div className="rounded-lg bg-muted/20 p-3">
+											<p className="font-medium text-sm">Recherche: "{searchQuery}"</p>
+										</div>
+									)}
 								</CardContent>
 							</Card>
 
+							{/* Category Grid */}
 							<Card>
 								<CardHeader>
-									<CardTitle>Category Filter</CardTitle>
+									<CardTitle className="flex items-center justify-between">
+										Catégories en Grille
+										{selectedCategory && (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={handleClearCategory}
+											>
+												Effacer sélection
+											</Button>
+										)}
+									</CardTitle>
 								</CardHeader>
-								<CardContent>
-									<CategoryFilter
-										categories={mockCategories}
-										selectedCategory={null}
-										onCategorySelect={(category) =>
-											console.log("Category:", category)
-										}
-									/>
+								<CardContent className="space-y-4">
+									<div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+										{mockCategories.map((category) => {
+											const isSelected = selectedCategory?.id === category.id;
+											return (
+												<Card
+													key={category.id}
+													className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 ${
+														isSelected 
+															? 'ring-2 ring-primary shadow-lg scale-105' 
+															: ''
+													}`}
+													onClick={() => handleCategorySelect(category)}
+												>
+													<CardContent className="p-4 text-center">
+														<div className="space-y-3">
+															<div 
+																className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center"
+																style={{ 
+																	backgroundColor: category.color + '20',
+																	border: `2px solid ${category.color}`
+																}}
+															>
+																<div 
+																	className="h-6 w-6 rounded-lg"
+																	style={{ 
+																		backgroundColor: category.color
+																	}}
+																/>
+															</div>
+															<h5 className="font-semibold text-sm">{category.name}</h5>
+															{category.description && (
+																<p className="text-muted-foreground text-xs line-clamp-2">
+																	{category.description}
+																</p>
+															)}
+															{isSelected && (
+																<div className="text-primary text-xs font-medium">
+																	✓ Sélectionné
+																</div>
+															)}
+														</div>
+													</CardContent>
+												</Card>
+											);
+										})}
+									</div>
+									
+									{selectedCategory && (
+										<div className="mt-4 rounded-lg bg-muted/20 p-3">
+											<div className="flex items-center gap-2">
+												<div 
+													className="h-4 w-4 rounded-full"
+													style={{ backgroundColor: selectedCategory.color }}
+												/>
+												<span className="font-semibold text-sm">{selectedCategory.name}</span>
+											</div>
+											{selectedCategory.description && (
+												<p className="text-muted-foreground text-xs mt-1">
+													{selectedCategory.description}
+												</p>
+											)}
+										</div>
+									)}
 								</CardContent>
 							</Card>
 
+							{/* Filter Panel */}
 							<Card>
 								<CardHeader>
-									<CardTitle>Filter Panel</CardTitle>
+									<CardTitle className="flex items-center justify-between">
+										Panneau de Filtres
+										{Object.keys(filters).length > 0 && (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={handleClearFilters}
+											>
+												Réinitialiser
+											</Button>
+										)}
+									</CardTitle>
 								</CardHeader>
-								<CardContent>
-									<FilterPanel
-										onFiltersChange={(filters) =>
-											console.log("Filters:", filters)
-										}
-									/>
+								<CardContent className="space-y-4">
+									<FilterPanel onFiltersChange={handleFiltersChange} />
+									
+									{Object.keys(filters).length > 0 && (
+										<div className="rounded-lg bg-muted/20 p-3">
+											<p className="font-medium text-sm mb-2">Filtres actifs:</p>
+											<div className="space-y-1">
+												{Object.entries(filters).map(([key, value]) => (
+													<div key={key} className="flex items-center gap-2 text-sm">
+														<span className="font-medium">{key}:</span>
+														<span className="text-muted-foreground">
+															{Array.isArray(value) ? value.join(', ') : String(value)}
+														</span>
+													</div>
+												))}
+											</div>
+										</div>
+									)}
 								</CardContent>
 							</Card>
 						</div>
@@ -562,13 +705,6 @@ export default function ComponentsPage() {
 				</Tabs>
 			</div>
 
-			{/* Fixed Mini Player */}
-			<MiniPlayer
-				episode={selectedEpisode}
-				isPlaying={isPlaying}
-				onPlayPause={() => setIsPlaying(!isPlaying)}
-				onExpand={() => console.log("Expand player")}
-			/>
 		</>
 	);
 }

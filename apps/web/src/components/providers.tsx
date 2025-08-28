@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "@/utils/trpc";
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
+import { AudioProvider } from "@/contexts/audio-context";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	return (
@@ -15,8 +16,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 			disableTransitionOnChange
 		>
 			<QueryClientProvider client={queryClient}>
-				{children}
-				<ReactQueryDevtools />
+				<AudioProvider>
+					{children}
+					<ReactQueryDevtools />
+				</AudioProvider>
 			</QueryClientProvider>
 			<Toaster richColors />
 		</ThemeProvider>

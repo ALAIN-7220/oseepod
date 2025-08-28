@@ -1,6 +1,7 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, podcast } from "../db/index";
+import { uploadedFiles } from "../db/schema/podcast";
 import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
 
 export const podcastRouter = router({
@@ -165,6 +166,63 @@ export const podcastRouter = router({
 				.orderBy(podcast.episodeMarkers.timestamp);
 
 			return { ...episode, markers };
+		}),
+
+	// Get single episode by ID
+	getEpisodeById: publicProcedure
+		.input(z.object({ id: z.number() }))
+		.query(async ({ input }) => {
+			const [episode] = await db
+				.select({
+					id: podcast.episodes.id,
+					title: podcast.episodes.title,
+					slug: podcast.episodes.slug,
+					description: podcast.episodes.description,
+					content: podcast.episodes.content,
+					audioUrl: podcast.episodes.audioUrl,
+					videoUrl: podcast.episodes.videoUrl,
+					thumbnailUrl: podcast.episodes.thumbnailUrl,
+					duration: podcast.episodes.duration,
+					biblicalReference: podcast.episodes.biblicalReference,
+					transcript: podcast.episodes.transcript,
+					publishedAt: podcast.episodes.publishedAt,
+					playCount: podcast.episodes.playCount,
+					likeCount: podcast.episodes.likeCount,
+					metadata: podcast.episodes.metadata,
+					pastor: {
+						id: podcast.pastors.id,
+						name: podcast.pastors.name,
+						bio: podcast.pastors.bio,
+						image: podcast.pastors.image,
+						church: podcast.pastors.church,
+					},
+					category: {
+						id: podcast.categories.id,
+						name: podcast.categories.name,
+						color: podcast.categories.color,
+					},
+				})
+				.from(podcast.episodes)
+				.leftJoin(
+					podcast.pastors,
+					eq(podcast.episodes.pastorId, podcast.pastors.id),
+				)
+				.leftJoin(
+					podcast.categories,
+					eq(podcast.episodes.categoryId, podcast.categories.id),
+				)
+				.where(
+					and(
+						eq(podcast.episodes.id, input.id),
+						eq(podcast.episodes.isPublished, true),
+					),
+				);
+
+			if (!episode) {
+				throw new Error("Episode not found");
+			}
+
+			return episode;
 		}),
 
 	// Add/Remove favorite
@@ -557,6 +615,37 @@ export const podcastRouter = router({
 			return { isDownloaded: true };
 		}),
 
+	// Get general app statistics
+	getGeneralStats: publicProcedure.query(async () => {
+		// Total episodes
+		const [episodesCount] = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(podcast.episodes)
+			.where(eq(podcast.episodes.isPublished, true));
+
+		// Total pastors
+		const [pastorsCount] = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(podcast.pastors);
+
+		// Total play count (sum of all episodes play counts)
+		const [totalPlays] = await db
+			.select({ total: sql<number>`sum(${podcast.episodes.playCount})` })
+			.from(podcast.episodes)
+			.where(eq(podcast.episodes.isPublished, true));
+
+		// Estimate unique listeners (rough calculation based on play counts)
+		const uniqueListeners = Math.floor((totalPlays?.total || 0) * 0.3); // Rough estimate
+
+		return {
+			totalEpisodes: episodesCount?.count || 0,
+			totalPastors: pastorsCount?.count || 0,
+			totalPlays: totalPlays?.total || 0,
+			uniqueListeners: uniqueListeners,
+			totalHours: Math.floor((totalPlays?.total || 0) * 45 / 3600), // Assume avg 45min per episode
+		};
+	}),
+
 	// Get user statistics
 	getUserStats: protectedProcedure.query(async ({ ctx }) => {
 		const userId = ctx.session.userId;
@@ -726,5 +815,262 @@ export const podcastRouter = router({
 				.slice(0, input.limit);
 
 			return allActivities;
+		}),
+
+	// Get all pastors
+	getPastors: publicProcedure.query(async () => {
+		return await db
+			.select()
+			.from(podcast.pastors)
+			.orderBy(podcast.pastors.name);
+	}),
+
+	// Create new episode (upload)
+	createEpisode: protectedProcedure
+		.input(
+			z.object({
+				title: z.string().min(1, "Title is required"),
+				description: z.string().optional(),
+				pastorId: z.number().min(1, "Pastor is required"),
+				categoryId: z.number().min(1, "Category is required"),
+				audioFileId: z.number().min(1, "Audio file is required"),
+				thumbnailFileId: z.number().optional(),
+				biblicalReference: z.string().optional(),
+				transcript: z.string().optional(),
+				thumbnailUrl: z.string().url().optional(),
+				metadata: z.object({
+					tags: z.array(z.string()).optional(),
+					language: z.string().optional(),
+					season: z.number().optional(),
+					episodeNumber: z.number().optional(),
+				}).optional(),
+			}),
+		)
+		.mutation(async ({ input, ctx }) => {
+			// Verify ownership of audio file
+			const audioFile = await db
+				.select()
+				.from(uploadedFiles)
+				.where(
+					and(
+						eq(uploadedFiles.id, input.audioFileId),
+						eq(uploadedFiles.userId, ctx.session.user.id),
+						eq(uploadedFiles.fileType, 'audio')
+					)
+				)
+				.limit(1);
+
+			if (!audioFile.length) {
+				throw new Error("Audio file not found or not authorized");
+			}
+
+			// Verify ownership of thumbnail file (if provided)
+			let thumbnailFile = null;
+			if (input.thumbnailFileId) {
+				const result = await db
+					.select()
+					.from(uploadedFiles)
+					.where(
+						and(
+							eq(uploadedFiles.id, input.thumbnailFileId),
+							eq(uploadedFiles.userId, ctx.session.user.id),
+							eq(uploadedFiles.fileType, 'image')
+						)
+					)
+					.limit(1);
+
+				if (!result.length) {
+					throw new Error("Thumbnail file not found or not authorized");
+				}
+				thumbnailFile = result[0];
+			}
+
+			// Generate slug from title
+			const slug = input.title
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, "-")
+				.replace(/(^-|-$)/g, "");
+
+			// Check if slug already exists
+			const existingEpisode = await db
+				.select()
+				.from(podcast.episodes)
+				.where(eq(podcast.episodes.slug, slug))
+				.limit(1);
+
+			const finalSlug = existingEpisode.length > 0 ? 
+				`${slug}-${Date.now()}` : slug;
+
+			// Create episode with file URLs
+			const audioUrl = `/uploads/${audioFile[0].filename}`;
+			const thumbnailUrl = thumbnailFile ? `/uploads/${thumbnailFile.filename}` : null;
+
+			const [newEpisode] = await db
+				.insert(podcast.episodes)
+				.values({
+					title: input.title,
+					slug: finalSlug,
+					description: input.description,
+					pastorId: input.pastorId,
+					categoryId: input.categoryId,
+					audioUrl: audioUrl,
+					thumbnailUrl: thumbnailUrl,
+					duration: audioFile[0].duration || 0,
+					fileSize: audioFile[0].fileSize,
+					biblicalReference: input.biblicalReference,
+					transcript: input.transcript,
+					metadata: input.metadata,
+					isPublished: true, // Auto-publish uploaded episodes
+					publishedAt: new Date(),
+				})
+				.returning();
+
+			return newEpisode;
+		}),
+
+	// Update episode
+	updateEpisode: protectedProcedure
+		.input(
+			z.object({
+				id: z.number(),
+				title: z.string().min(1, "Title is required").optional(),
+				description: z.string().optional(),
+				pastorId: z.number().min(1, "Pastor is required").optional(),
+				categoryId: z.number().min(1, "Category is required").optional(),
+				biblicalReference: z.string().optional(),
+				transcript: z.string().optional(),
+				thumbnailUrl: z.string().url().optional(),
+				isPublished: z.boolean().optional(),
+				isFeatured: z.boolean().optional(),
+				metadata: z.object({
+					tags: z.array(z.string()).optional(),
+					language: z.string().optional(),
+					season: z.number().optional(),
+					episodeNumber: z.number().optional(),
+				}).optional(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			const { id, ...updates } = input;
+			
+			// If publishing for the first time, set publishedAt
+			if (updates.isPublished && updates.isPublished === true) {
+				updates.publishedAt = new Date();
+			}
+
+			const [updatedEpisode] = await db
+				.update(podcast.episodes)
+				.set({ ...updates, updatedAt: new Date() })
+				.where(eq(podcast.episodes.id, id))
+				.returning();
+
+			if (!updatedEpisode) {
+				throw new Error("Episode not found");
+			}
+
+			return updatedEpisode;
+		}),
+
+	// Delete episode
+	deleteEpisode: protectedProcedure
+		.input(z.object({ id: z.number() }))
+		.mutation(async ({ input }) => {
+			const [deletedEpisode] = await db
+				.delete(podcast.episodes)
+				.where(eq(podcast.episodes.id, input.id))
+				.returning();
+
+			if (!deletedEpisode) {
+				throw new Error("Episode not found");
+			}
+
+			return { success: true, deletedEpisode };
+		}),
+
+	// Get user's uploaded files
+	getUploadedFiles: protectedProcedure
+		.input(
+			z.object({
+				type: z.enum(['audio', 'image']).optional(),
+				limit: z.number().min(1).max(100).default(20),
+				offset: z.number().min(0).default(0),
+			}),
+		)
+		.query(async ({ input, ctx }) => {
+			let query = db
+				.select({
+					id: uploadedFiles.id,
+					filename: uploadedFiles.filename,
+					originalName: uploadedFiles.originalName,
+					mimeType: uploadedFiles.mimeType,
+					fileSize: uploadedFiles.fileSize,
+					fileType: uploadedFiles.fileType,
+					duration: uploadedFiles.duration,
+					uploadedAt: uploadedFiles.uploadedAt,
+				})
+				.from(uploadedFiles)
+				.where(eq(uploadedFiles.userId, ctx.session.user.id));
+
+			if (input.type) {
+				query = query.where(eq(uploadedFiles.fileType, input.type));
+			}
+
+			const files = await query
+				.orderBy(desc(uploadedFiles.uploadedAt))
+				.limit(input.limit)
+				.offset(input.offset);
+
+			// Add URL to each file
+			return files.map(file => ({
+				...file,
+				url: `/uploads/${file.filename}`,
+			}));
+		}),
+
+	// Delete uploaded file
+	deleteUploadedFile: protectedProcedure
+		.input(z.object({ id: z.number() }))
+		.mutation(async ({ input, ctx }) => {
+			// Verify ownership and get file info
+			const file = await db
+				.select()
+				.from(uploadedFiles)
+				.where(
+					and(
+						eq(uploadedFiles.id, input.id),
+						eq(uploadedFiles.userId, ctx.session.user.id)
+					)
+				)
+				.limit(1);
+
+			if (!file.length) {
+				throw new Error("File not found or not authorized");
+			}
+
+			// Delete file from filesystem
+			try {
+				const fs = await import('fs/promises');
+				await fs.unlink(file[0].filePath);
+			} catch (fsError) {
+				console.warn('File not found on filesystem:', file[0].filePath);
+			}
+
+			// Delete from database
+			await db
+				.delete(uploadedFiles)
+				.where(eq(uploadedFiles.id, input.id));
+
+			return { success: true };
+		}),
+
+	// Upload file
+	uploadFile: protectedProcedure
+		.input(z.object({
+			file: z.instanceof(File)
+		}))
+		.mutation(async ({ input, ctx }) => {
+			// This would be better handled through a separate upload endpoint
+			// For now, return an error asking to use the HTTP endpoint
+			throw new Error("Use /api/upload/file HTTP endpoint for file uploads");
 		}),
 });

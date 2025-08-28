@@ -5,266 +5,477 @@ import {
 	ChevronRight,
 	Clock,
 	Download,
+	Eye,
 	Flame,
+	Grid3X3,
 	Headphones,
 	Heart,
 	Play,
+	Pause,
+	Search,
 	Star,
 	TrendingUp,
 	Users,
+	Volume2,
+	X,
 } from "lucide-react";
-import { useState } from "react";
-import { CategoryFilter } from "@/components/category-filter";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { EpisodeCard } from "@/components/episode-card";
-import { MiniPlayer } from "@/components/mini-player";
-import { RecommendationSlider } from "@/components/recommendation-slider";
 import { SearchBar } from "@/components/search-bar";
+import { useAudio } from "@/contexts/audio-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockCategories, mockEpisodes, mockPastors } from "@/lib/test-data";
+import { Input } from "@/components/ui/input";
+import { trpc } from "@/utils/trpc";
+import { toast } from "sonner";
 
 export default function HomePage() {
-	const [selectedEpisode, setSelectedEpisode] = useState(mockEpisodes[0]);
-	const [isPlaying, setIsPlaying] = useState(false);
-	const [selectedCategory, setSelectedCategory] = useState<{id: number; name: string; slug: string; color: string; description?: string} | null>(null);
+	const router = useRouter();
+	const { playEpisode, currentEpisode, isPlaying } = useAudio();
+	const [selectedCategory, setSelectedCategory] = useState<any>(null);
+	const [favorites, setFavorites] = useState<number[]>([]);
+	const [downloads, setDownloads] = useState<number[]>([]);
+	const [searchQuery, setSearchQuery] = useState("");
 
-	const latestEpisodes = mockEpisodes.slice(0, 6);
-	const trendingEpisodes = mockEpisodes.slice(2, 8);
-	const featuredEpisodes = mockEpisodes.slice(0, 3);
-	const recommendedEpisodes = mockEpisodes.slice(1, 7);
+	// Memoize query params to prevent unnecessary re-renders
+	const episodesParams = useMemo(() => ({
+		limit: 20,
+		offset: 0,
+		featured: false,
+		...(searchQuery && { search: searchQuery }),
+		...(selectedCategory?.id && { categoryId: selectedCategory.id }),
+	}), [searchQuery, selectedCategory?.id]);
+
+	const featuredParams = useMemo(() => ({
+		limit: 5,
+		offset: 0,
+		featured: true,
+	}), []);
+
+	// Fetch data from API
+	const { data: episodes = [], isLoading: episodesLoading, error: episodesError } = trpc.podcast.getEpisodes.useQuery(episodesParams);
+	const { data: featuredEpisodes = [], error: featuredError } = trpc.podcast.getEpisodes.useQuery(featuredParams);
+	
+	const { data: categories = [], error: categoriesError } = trpc.podcast.getCategories.useQuery();
+	const { data: pastors = [], error: pastorsError } = trpc.podcast.getPastors.useQuery();
+	const { data: generalStats } = trpc.podcast.getGeneralStats.useQuery();
+
+	// Temporary mutations - will be replaced with working versions
+	const toggleFavoriteMutation = {
+		mutate: (input: { episodeId: number }) => {
+			// Simulate toggle
+			const isFavorite = !favorites.includes(input.episodeId);
+			if (isFavorite) {
+				setFavorites(prev => [...prev, input.episodeId]);
+				toast.success("Ajouté aux favoris");
+			} else {
+				setFavorites(prev => prev.filter(id => id !== input.episodeId));
+				toast.success("Retiré des favoris");
+			}
+		}
+	};
+
+	const toggleDownloadMutation = {
+		mutate: (input: { episodeId: number }) => {
+			// Simulate toggle
+			const isDownloaded = !downloads.includes(input.episodeId);
+			if (isDownloaded) {
+				setDownloads(prev => [...prev, input.episodeId]);
+				toast.success("Téléchargement ajouté");
+			} else {
+				setDownloads(prev => prev.filter(id => id !== input.episodeId));
+				toast.success("Téléchargement supprimé");
+			}
+		}
+	};
+
+	// Auto-play first featured episode (optional)
+	// useEffect(() => {
+	// 	if (featuredEpisodes.length > 0) {
+	// 		playEpisode(featuredEpisodes[0]);
+	// 	}
+	// }, [featuredEpisodes, playEpisode]);
+
+	// Episodes are already filtered by the API query
+	const filteredEpisodes = episodes;
+	const latestEpisodes = episodes.slice(0, 6);
+	const trendingEpisodes = episodes.slice(2, 8);
+	const featuredEpisode = featuredEpisodes[0] || episodes[0];
 
 	const handleEpisodeSelect = (episode: any) => {
-		setSelectedEpisode(episode);
-		setIsPlaying(true);
+		playEpisode(episode);
+	};
+
+	const handleAddToFavorites = (episodeId: number) => {
+		toggleFavoriteMutation.mutate({ episodeId });
+	};
+
+	const handleDownload = (episodeId: number) => {
+		toggleDownloadMutation.mutate({ episodeId });
+	};
+
+	const handleCategorySelect = (category: any) => {
+		setSelectedCategory(category);
+	};
+
+	const handleSearch = (query: string) => {
+		setSearchQuery(query);
+	};
+
+	const handleViewPastor = (pastorId: string) => {
+		router.push(`/pastors/${pastorId}`);
+	};
+
+	const handleViewAll = (section: string) => {
+		router.push(`/explore?filter=${section}`);
+	};
+
+	// Audio simulation removed - now handled by AudioContext
+
+	const formatTime = (seconds: number) => {
+		const mins = Math.floor(seconds / 60);
+		const secs = Math.floor(seconds % 60);
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
 	};
 
 	const stats = {
-		totalEpisodes: 247,
-		totalListeners: 12450,
-		totalHours: 3420,
-		activePastors: 15,
+		totalEpisodes: generalStats?.totalEpisodes || episodes.length,
+		totalListeners: generalStats?.uniqueListeners || Math.floor((generalStats?.totalPlays || 0) * 0.3),
+		totalHours: generalStats?.totalHours || Math.floor(episodes.reduce((total, ep) => total + (ep.duration || 0), 0) / 3600),
+		activePastors: generalStats?.totalPastors || pastors.length,
 	};
 
-	return (
-		<div className="min-h-screen bg-background pb-24">
-			{/* Header Section */}
-			<div className="border-b bg-gradient-to-br from-primary/10 via-primary/5 to-background">
-				<div className="container mx-auto px-4 py-8">
-					<div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-						<div className="space-y-2">
-							<h1 className="font-bold text-4xl">
-								Bienvenue sur <span className="text-primary">OseePod</span>
-							</h1>
-							<p className="text-muted-foreground text-xl">
-								Découvrez des enseignements spirituels inspirants
-							</p>
-							<div className="mt-4 flex items-center gap-6 text-muted-foreground text-sm">
-								<div className="flex items-center gap-1">
-									<Headphones className="h-4 w-4" />
-									{stats.totalEpisodes} épisodes
-								</div>
-								<div className="flex items-center gap-1">
-									<Users className="h-4 w-4" />
-									{stats.totalListeners.toLocaleString()} auditeurs
-								</div>
-								<div className="flex items-center gap-1">
-									<Clock className="h-4 w-4" />
-									{stats.totalHours}h de contenu
-								</div>
-							</div>
-						</div>
+	// Debug logging (can be removed in production)
+	console.log('Episodes loading:', episodesLoading, 'Episodes count:', episodes.length, 'Featured count:', featuredEpisodes.length);
 
-						<div className="w-full lg:w-96">
-							<SearchBar onSearch={(query) => console.log("Search:", query)} />
+	// Show error state
+	if (episodesError || featuredError || categoriesError || pastorsError) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center space-y-4">
+					<div className="text-red-500 text-lg">⚠️ Erreur de connexion</div>
+					<p className="text-muted-foreground">
+						{episodesError?.message || featuredError?.message || categoriesError?.message || pastorsError?.message}
+					</p>
+					<p className="text-sm text-muted-foreground">
+						Vérifiez que le serveur backend fonctionne sur http://localhost:3000
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Show loading state - simplifiée
+	if (episodesLoading) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center space-y-4">
+					<div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+					<p className="text-muted-foreground">Chargement des épisodes...</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Show empty state if no data
+	if (!episodesLoading && episodes.length === 0 && featuredEpisodes.length === 0) {
+		return (
+			<div className="min-h-screen bg-background flex items-center justify-center">
+				<div className="text-center space-y-6 max-w-md">
+					<div className="text-6xl">🎧</div>
+					<div className="space-y-2">
+						<h2 className="text-2xl font-bold">Aucun épisode disponible</h2>
+						<p className="text-muted-foreground">
+							Il n'y a pas encore d'épisodes dans la base de données.
+						</p>
+					</div>
+					<div className="space-y-2">
+						<p className="text-sm text-muted-foreground">
+							Pour ajouter des épisodes :
+						</p>
+						<div className="flex flex-col gap-2">
+							<Button 
+								onClick={() => router.push('/upload')}
+								className="gap-2"
+							>
+								📤 Uploader un épisode
+							</Button>
+							<Button 
+								variant="outline"
+								onClick={() => window.location.reload()}
+								className="gap-2"
+							>
+								🔄 Recharger la page
+							</Button>
 						</div>
 					</div>
 				</div>
 			</div>
+		);
+	}
 
-			<div className="container mx-auto px-4 py-8">
-				<div className="space-y-12">
-					{/* Featured Episode */}
-					<section className="space-y-6">
-						<div className="flex items-center justify-between">
-							<h2 className="flex items-center gap-2 font-bold text-2xl">
-								<Star className="h-6 w-6 text-yellow-500" />
-								Épisode Vedette
-							</h2>
+	return (
+		<div className="min-h-screen bg-background pb-24">
+			{/* Hero Section */}
+			<div className="border-b bg-gradient-to-br from-primary/10 via-primary/5 to-background">
+				<div className="container mx-auto px-4 py-12">
+					<div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-center">
+						{/* Left side - Content */}
+						<div className="space-y-6">
+							<div className="space-y-4">
+								<Badge variant="secondary" className="w-fit">
+									🎧 Nouveau sur OseePod
+								</Badge>
+								<h1 className="font-bold text-5xl leading-tight">
+									Découvrez des enseignements 
+									<span className="text-primary"> spirituels</span> inspirants
+								</h1>
+								<p className="text-muted-foreground text-xl leading-relaxed">
+									Écoutez les meilleurs prêches, enseignements et témoignages 
+									de pasteurs reconnus, disponibles en streaming et téléchargement.
+								</p>
+							</div>
+
+							<div className="flex flex-wrap items-center gap-6 text-muted-foreground">
+								<div className="flex items-center gap-2">
+									<Headphones className="h-5 w-5 text-primary" />
+									<span className="font-medium">{stats.totalEpisodes} épisodes</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<Users className="h-5 w-5 text-primary" />
+									<span className="font-medium">{stats.totalListeners.toLocaleString()} auditeurs</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<Clock className="h-5 w-5 text-primary" />
+									<span className="font-medium">{stats.totalHours}h de contenu</span>
+								</div>
+							</div>
+
+							<div className="flex flex-col gap-4 sm:flex-row">
+								<Button size="lg" onClick={() => handleEpisodeSelect(featuredEpisode)} className="gap-2">
+									<Play className="h-5 w-5" />
+									Commencer l'écoute
+								</Button>
+								<Button size="lg" variant="outline" onClick={() => router.push("/explore")} className="gap-2">
+									<Search className="h-5 w-5" />
+									Explorer le catalogue
+								</Button>
+							</div>
 						</div>
 
-						<Card className="relative overflow-hidden">
-							<div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent" />
-							<CardContent className="p-8">
-								<div className="relative z-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-3">
-									<div className="space-y-4 lg:col-span-2">
-										<div className="flex items-center gap-2">
-											<Badge
-												variant="secondary"
-												className="bg-primary/20 text-primary"
-											>
-												Nouveau
-											</Badge>
-											<Badge variant="outline">
-												{featuredEpisodes[0].category.name}
-											</Badge>
-										</div>
-
-										<div className="space-y-2">
-											<h3 className="font-bold text-3xl">
-												{featuredEpisodes[0].title}
-											</h3>
-											<p className="text-lg text-muted-foreground">
-												{featuredEpisodes[0].pastor.name}
-											</p>
-											<p className="line-clamp-2 text-muted-foreground">
-												{featuredEpisodes[0].description}
-											</p>
-										</div>
-
-										<div className="flex items-center gap-4 text-muted-foreground text-sm">
-											<span className="flex items-center gap-1">
-												<Clock className="h-4 w-4" />
-												{Math.floor(featuredEpisodes[0].duration / 60)}:{(featuredEpisodes[0].duration % 60).toString().padStart(2, '0')}
-											</span>
-											<span className="flex items-center gap-1">
-												<Calendar className="h-4 w-4" />
-												{new Date(
-													featuredEpisodes[0].publishedAt,
-												).toLocaleDateString("fr-FR")}
-											</span>
-											<span className="flex items-center gap-1">
-												<Play className="h-4 w-4" />
-												{featuredEpisodes[0].playCount.toLocaleString()} écoutes
-											</span>
-										</div>
-
-										<div className="flex items-center gap-3 pt-2">
-											<Button
-												size="lg"
-												onClick={() => handleEpisodeSelect(featuredEpisodes[0])}
-												className="bg-primary hover:bg-primary/90"
-											>
-												<Play className="mr-2 h-5 w-5" />
-												Écouter maintenant
-											</Button>
-											<Button variant="outline" size="lg">
-												<Heart className="mr-2 h-5 w-5" />
-												Ajouter aux favoris
-											</Button>
-											<Button variant="outline" size="lg">
-												<Download className="mr-2 h-5 w-5" />
-												Télécharger
-											</Button>
-										</div>
-									</div>
-
-									<div className="flex justify-center">
-										<div className="relative">
-											<div className="flex h-48 w-48 items-center justify-center rounded-2xl border bg-gradient-to-br from-primary/20 to-primary/5 shadow-lg">
-												<Play className="h-16 w-16 text-primary" />
-											</div>
-											<div className="-inset-4 absolute rounded-3xl bg-gradient-to-r from-primary/20 to-purple-600/20 opacity-30 blur-xl" />
-										</div>
-									</div>
+						{/* Right side - Featured Episode Player */}
+						<Card className="overflow-hidden shadow-2xl">
+							<div className="relative aspect-video bg-gradient-to-br from-primary/20 to-purple-600/20">
+								<div className="absolute inset-0 flex items-center justify-center">
+									<Button
+										size="lg"
+										onClick={() => featuredEpisode && handleEpisodeSelect(featuredEpisode)}
+										disabled={!featuredEpisode}
+										className="h-20 w-20 rounded-full shadow-xl hover:scale-110 transition-transform disabled:opacity-50"
+									>
+										<Play className="h-8 w-8 ml-1" />
+									</Button>
 								</div>
-							</CardContent>
+								{/* Episode Info Overlay */}
+								{featuredEpisode && (
+									<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+										<div className="text-white">
+											<h3 className="font-bold text-lg line-clamp-2">{featuredEpisode.title}</h3>
+											<p className="text-white/80">{featuredEpisode.pastor?.name || 'Pasteur non défini'}</p>
+										</div>
+									</div>
+								)}
+							</div>
+							
+							{/* Player Controls - Now handled by MiniPlayer */}
 						</Card>
-					</section>
+					</div>
+				</div>
+			</div>
 
-					{/* Category Filter */}
+			<div className="container mx-auto px-4 py-12">
+				<div className="space-y-16">
+					{/* Search & Filters */}
 					<section className="space-y-6">
-						<h2 className="font-bold text-2xl">Parcourir par Catégorie</h2>
-						<CategoryFilter
-							categories={mockCategories}
-							selectedCategory={selectedCategory}
-							onCategorySelect={setSelectedCategory}
-						/>
+						<div className="text-center space-y-4">
+							<h2 className="font-bold text-3xl">Trouvez votre prochaine écoute</h2>
+							<p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+								Recherchez par titre, pasteur ou explorez nos catégories
+							</p>
+						</div>
+						
+						<div className="max-w-2xl mx-auto space-y-4">
+							<SearchBar onSearch={handleSearch} placeholder="Rechercher des épisodes, pasteurs..." />
+							
+							{searchQuery && (
+								<div className="flex items-center gap-2">
+									<span className="text-muted-foreground text-sm">Recherche:</span>
+									<Badge variant="outline" className="gap-1">
+										<Search className="h-3 w-3" />
+										"{searchQuery}"
+									</Badge>
+									<Button variant="ghost" size="sm" onClick={() => handleSearch("")}>
+										<X className="h-4 w-4" />
+									</Button>
+								</div>
+							)}
+						</div>
+						
+						{/* Categories Grid */}
+						<div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 max-w-4xl mx-auto">
+							{categories.map((category) => {
+								const isSelected = selectedCategory?.id === category.id;
+								const categoryEpisodes = episodes.filter(ep => ep.category?.name === category.name).length;
+								
+								return (
+									<Card
+										key={category.id}
+										className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 ${
+											isSelected ? 'ring-2 ring-primary shadow-lg scale-105' : ''
+										}`}
+										onClick={() => handleCategorySelect(isSelected ? null : category)}
+									>
+										<CardContent className="p-4 text-center">
+											<div className="space-y-3">
+												<div 
+													className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center"
+													style={{ backgroundColor: category.color + '20' }}
+												>
+													<div 
+														className="h-6 w-6 rounded-lg"
+														style={{ backgroundColor: category.color }}
+													/>
+												</div>
+												<div>
+													<h3 className="font-semibold text-sm">{category.name}</h3>
+													<p className="text-muted-foreground text-xs">{categoryEpisodes} épisodes</p>
+												</div>
+												{isSelected && (
+													<Badge variant="default" className="text-xs">
+														Sélectionné
+													</Badge>
+												)}
+											</div>
+										</CardContent>
+									</Card>
+								);
+							})}
+						</div>
 					</section>
 
 					{/* Latest Episodes */}
-					<section className="space-y-6">
+					<section className="space-y-8">
 						<div className="flex items-center justify-between">
-							<h2 className="flex items-center gap-2 font-bold text-2xl">
-								<Clock className="h-6 w-6 text-blue-500" />
-								Derniers Épisodes
-							</h2>
-							<Button variant="ghost" className="text-primary">
-								Voir tout <ChevronRight className="ml-1 h-4 w-4" />
+							<div>
+								<h2 className="flex items-center gap-2 font-bold text-3xl">
+									<Clock className="h-8 w-8 text-blue-500" />
+									Derniers Épisodes
+								</h2>
+								<p className="text-muted-foreground mt-2">Les dernières prédications ajoutées</p>
+							</div>
+							<Button 
+								variant="outline" 
+								onClick={() => handleViewAll('latest')}
+								className="gap-2"
+							>
+								Voir tout <ChevronRight className="h-4 w-4" />
 							</Button>
 						</div>
 
 						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-							{latestEpisodes.map((episode, index) => (
+							{latestEpisodes.map((episode) => (
 								<EpisodeCard
 									key={episode.id}
 									episode={episode}
 									onPlay={() => handleEpisodeSelect(episode)}
 									variant="default"
-									isPlaying={selectedEpisode?.id === episode.id && isPlaying}
-									isLiked={index % 3 === 0}
-									isDownloaded={index % 4 === 0}
+									isPlaying={currentEpisode?.id === episode.id && isPlaying}
+									isLiked={favorites.includes(episode.id)}
+									isDownloaded={downloads.includes(episode.id)}
 								/>
 							))}
 						</div>
 					</section>
 
 					{/* Trending Now */}
-					<section className="space-y-6">
+					<section className="space-y-8">
 						<div className="flex items-center justify-between">
-							<h2 className="flex items-center gap-2 font-bold text-2xl">
-								<Flame className="h-6 w-6 text-orange-500" />
-								Tendances Actuelles
-							</h2>
-							<Button variant="ghost" className="text-primary">
-								Voir tout <ChevronRight className="ml-1 h-4 w-4" />
+							<div>
+								<h2 className="flex items-center gap-2 font-bold text-3xl">
+									<Flame className="h-8 w-8 text-orange-500" />
+									Tendances Actuelles
+								</h2>
+								<p className="text-muted-foreground mt-2">Les épisodes les plus écoutés cette semaine</p>
+							</div>
+							<Button 
+								variant="outline" 
+								onClick={() => handleViewAll('trending')}
+								className="gap-2"
+							>
+								Voir tout <ChevronRight className="h-4 w-4" />
 							</Button>
 						</div>
 
-						<RecommendationSlider
-							episodes={trendingEpisodes}
-							title=""
-							onEpisodePlay={handleEpisodeSelect}
-						/>
+						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+							{trendingEpisodes.map((episode) => (
+								<EpisodeCard
+									key={`trending-${episode.id}`}
+									episode={episode}
+									onPlay={() => handleEpisodeSelect(episode)}
+									variant="default"
+									isPlaying={currentEpisode?.id === episode.id && isPlaying}
+									isLiked={favorites.includes(episode.id)}
+									isDownloaded={downloads.includes(episode.id)}
+								/>
+							))}
+						</div>
 					</section>
 
 					{/* Popular Pastors */}
-					<section className="space-y-6">
+					<section className="space-y-8">
 						<div className="flex items-center justify-between">
-							<h2 className="flex items-center gap-2 font-bold text-2xl">
-								<Users className="h-6 w-6 text-green-500" />
-								Pasteurs Populaires
-							</h2>
-							<Button variant="ghost" className="text-primary">
-								Voir tous <ChevronRight className="ml-1 h-4 w-4" />
+							<div>
+								<h2 className="flex items-center gap-2 font-bold text-3xl">
+									<Users className="h-8 w-8 text-green-500" />
+									Pasteurs Populaires
+								</h2>
+								<p className="text-muted-foreground mt-2">Découvrez les enseignants les plus appréciés</p>
+							</div>
+							<Button 
+								variant="outline" 
+								onClick={() => router.push('/pastors')}
+								className="gap-2"
+							>
+								Voir tous <ChevronRight className="h-4 w-4" />
 							</Button>
 						</div>
 
 						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-							{mockPastors.slice(0, 4).map((pastor) => (
+							{pastors.slice(0, 4).map((pastor) => (
 								<Card
 									key={pastor.id}
-									className="cursor-pointer overflow-hidden transition-shadow hover:shadow-lg"
+									className="cursor-pointer overflow-hidden transition-shadow hover:shadow-lg group"
+									onClick={() => handleViewPastor(pastor.id.toString())}
 								>
 									<CardContent className="p-6 text-center">
-										<div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5">
+										<div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 group-hover:from-primary/30 group-hover:to-primary/10 transition-colors">
 											<Users className="h-10 w-10 text-primary" />
 										</div>
-										<h3 className="mb-1 font-semibold text-lg">
+										<h3 className="mb-2 font-semibold text-lg group-hover:text-primary transition-colors">
 											{pastor.name}
 										</h3>
-										<p className="mb-3 text-muted-foreground text-sm">
+										<p className="mb-4 text-muted-foreground text-sm line-clamp-2">
 											{pastor.bio}
 										</p>
-										<div className="flex items-center justify-center gap-4 text-muted-foreground text-xs">
-											<span>{pastor.episodeCount} épisodes</span>
-											<span>•</span>
+										<div className="flex items-center justify-center gap-4 text-muted-foreground text-xs mb-4">
 											<span className="flex items-center gap-1">
-												<Star className="h-3 w-3 text-yellow-500" />
-												{pastor.rating}
+												<Headphones className="h-3 w-3" />
+												{episodes.filter(ep => ep.pastor?.name === pastor.name).length} épisodes
 											</span>
 										</div>
-										<Button variant="outline" size="sm" className="mt-4 w-full">
+										<Button variant="outline" size="sm" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
 											Voir le profil
 										</Button>
 									</CardContent>
@@ -273,90 +484,55 @@ export default function HomePage() {
 						</div>
 					</section>
 
-					{/* Recommended for You */}
-					<section className="space-y-6">
-						<div className="flex items-center justify-between">
-							<h2 className="flex items-center gap-2 font-bold text-2xl">
-								<TrendingUp className="h-6 w-6 text-purple-500" />
-								Recommandé pour Vous
-							</h2>
-							<Button variant="ghost" className="text-primary">
-								Personnaliser <ChevronRight className="ml-1 h-4 w-4" />
-							</Button>
-						</div>
-
-						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-							{recommendedEpisodes.map((episode, index) => (
-								<EpisodeCard
-									key={`rec-${episode.id}`}
-									episode={episode}
-									onPlay={() => handleEpisodeSelect(episode)}
-									variant="compact"
-									isPlaying={selectedEpisode?.id === episode.id && isPlaying}
-									isLiked={index % 2 === 0}
-									isDownloaded={index % 3 === 0}
-								/>
-							))}
-						</div>
-					</section>
-
-					{/* Quick Stats */}
-					<section className="space-y-6">
-						<h2 className="font-bold text-2xl">OseePod en Chiffres</h2>
-						<div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-							<Card className="text-center">
-								<CardContent className="p-6">
-									<Headphones className="mx-auto mb-2 h-8 w-8 text-primary" />
-									<div className="font-bold text-3xl">
-										{stats.totalEpisodes}
+					{/* Quick Actions */}
+					<section className="bg-muted/20 rounded-2xl p-8">
+						<div className="text-center space-y-6">
+							<h2 className="font-bold text-2xl">Actions Rapides</h2>
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-3 max-w-3xl mx-auto">
+								<Button 
+									variant="outline" 
+									size="lg"
+									onClick={() => router.push('/favorites')}
+									className="gap-2 h-auto flex-col py-6"
+								>
+									<Heart className="h-8 w-8 text-red-500" />
+									<div>
+										<div className="font-semibold">Mes Favoris</div>
+										<div className="text-xs text-muted-foreground">{favorites.length} épisodes</div>
 									</div>
-									<div className="text-muted-foreground text-sm">Épisodes</div>
-								</CardContent>
-							</Card>
-
-							<Card className="text-center">
-								<CardContent className="p-6">
-									<Users className="mx-auto mb-2 h-8 w-8 text-blue-500" />
-									<div className="font-bold text-3xl">
-										{stats.totalListeners.toLocaleString()}
+								</Button>
+								
+								<Button 
+									variant="outline" 
+									size="lg"
+									onClick={() => router.push('/downloads')}
+									className="gap-2 h-auto flex-col py-6"
+								>
+									<Download className="h-8 w-8 text-green-500" />
+									<div>
+										<div className="font-semibold">Téléchargements</div>
+										<div className="text-xs text-muted-foreground">{downloads.length} épisodes</div>
 									</div>
-									<div className="text-muted-foreground text-sm">Auditeurs</div>
-								</CardContent>
-							</Card>
-
-							<Card className="text-center">
-								<CardContent className="p-6">
-									<Clock className="mx-auto mb-2 h-8 w-8 text-green-500" />
-									<div className="font-bold text-3xl">{stats.totalHours}h</div>
-									<div className="text-muted-foreground text-sm">
-										de Contenu
+								</Button>
+								
+								<Button 
+									variant="outline" 
+									size="lg"
+									onClick={() => router.push('/upload')}
+									className="gap-2 h-auto flex-col py-6"
+								>
+									<Grid3X3 className="h-8 w-8 text-blue-500" />
+									<div>
+										<div className="font-semibold">Upload Audio</div>
+										<div className="text-xs text-muted-foreground">Nouveau projet</div>
 									</div>
-								</CardContent>
-							</Card>
-
-							<Card className="text-center">
-								<CardContent className="p-6">
-									<Star className="mx-auto mb-2 h-8 w-8 text-yellow-500" />
-									<div className="font-bold text-3xl">
-										{stats.activePastors}
-									</div>
-									<div className="text-muted-foreground text-sm">Pasteurs</div>
-								</CardContent>
-							</Card>
+								</Button>
+							</div>
 						</div>
 					</section>
 				</div>
 			</div>
 
-			{/* Mini Player */}
-			{selectedEpisode && (
-				<MiniPlayer
-					episode={selectedEpisode}
-					isPlaying={isPlaying}
-					onPlayPause={() => setIsPlaying(!isPlaying)}
-					onExpand={() => console.log("Expand player")}
-				/>
-			)}
 		</div>
 	);
 }

@@ -342,12 +342,7 @@ export function EpisodeCard({
 					</div>
 
 					{/* Biblical Reference */}
-					{episode.biblicalReference && (
-						<div className="flex items-center gap-1 text-muted-foreground text-xs">
-							<BookOpen className="h-3 w-3" />
-							<span>{episode.biblicalReference}</span>
-						</div>
-					)}
+					{/* Removed for now - biblicalReference property doesn't exist in Episode interface */}
 
 					{/* Actions */}
 					<div className="flex items-center justify-between border-border/50 border-t pt-2">
